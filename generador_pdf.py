@@ -1,80 +1,129 @@
+import datetime
 import os
 import sys
+from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_RIGHT
-from reportlab.lib.pagesizes import LETTER
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import (
 	Paragraph,
+	SimpleDocTemplate,
 	Spacer,
 	Table,
 	TableStyle,
-	SimpleDocTemplate,
 )
 from svglib.svglib import svg2rlg
 
 
-def _valor_partida(partida, indice, *claves):
-	"""Obtiene un valor de una partida, ya sea diccionario o tupla."""
-	if isinstance(partida, dict):
-		for clave in claves:
-			if clave in partida:
-				return partida[clave]
-		return ""
+if hasattr(sys, "_MEIPASS"):
+	base_dir = sys._MEIPASS
+else:
+	base_dir = os.path.dirname(os.path.abspath(__file__))
 
+ruta_logo = os.path.join(base_dir, "logo_ancho_blanco.svg")
+
+
+def dibujar_pie_pagina(canvas, doc):
+	canvas.saveState()
+	canvas.setStrokeColor(colors.grey)
+	canvas.setLineWidth(0.6)
+	canvas.line(40, 50, letter[0] - 40, 50)
+	canvas.setFont("Helvetica", 9)
+	canvas.setFillColor(colors.black)
+	canvas.drawCentredString(
+		letter[0] / 2,
+		35,
+		"Teléfonos: 55 19412496 / 55 43327867 | Instagram: "
+		"@alquiladora.lider | www.alquiladoralider.com",
+	)
+	canvas.drawCentredString(
+		letter[0] / 2,
+		20,
+		"Calle Olivos mz 3 lte 10, Progreso de Guadalupe Victoria, "
+		"Ecatepec, Estado de México",
+	)
+	canvas.restoreState()
+
+
+def _texto_seguro(valor):
+	return escape("" if valor is None else str(valor))
+
+
+def _formatear_cantidad(valor):
 	try:
-		return partida[indice]
-	except (IndexError, KeyError, TypeError):
+		cantidad = float(valor)
+	except (TypeError, ValueError):
+		return _texto_seguro(valor)
+
+	if cantidad.is_integer():
+		return str(int(cantidad))
+	return f"{cantidad:.2f}".rstrip("0").rstrip(".")
+
+
+def _cargar_logo():
+	if not os.path.exists(ruta_logo):
 		return ""
 
+	dibujo_logo = svg2rlg(ruta_logo)
+	if not dibujo_logo or not dibujo_logo.height:
+		return ""
 
-def _texto(valor, predeterminado=""):
-	if valor is None or str(valor).strip() == "":
-		return predeterminado
-	return str(valor)
+	altura_maxima = 0.7 * inch
+	factor = min(1, altura_maxima / dibujo_logo.height)
+	dibujo_logo.scale(factor, factor)
+	dibujo_logo.width *= factor
+	dibujo_logo.height *= factor
+	return dibujo_logo
 
 
-def generar_cotizacion_pdf(
-	datos_cliente: dict,
-	partidas: list,
-	total: str,
-	ruta_salida: str = "cotizacion.pdf",
-):
-	"""Genera una cotizacion en formato Letter y la guarda en ``ruta_salida``."""
-	datos_cliente = datos_cliente or {}
+def generar_cotizacion_pdf(datos_cliente, partidas, total_str, ruta_salida):
 	doc = SimpleDocTemplate(
 		ruta_salida,
-		pagesize=LETTER,
-		rightMargin=0.55 * inch,
-		leftMargin=0.55 * inch,
-		topMargin=0.5 * inch,
-		bottomMargin=0.5 * inch,
+		pagesize=letter,
+		rightMargin=40,
+		leftMargin=40,
+		topMargin=40,
+		bottomMargin=60,
 	)
 	estilos = getSampleStyleSheet()
-	estilo_titulo = ParagraphStyle(
-		"TituloCotizacion",
-		parent=estilos["Title"],
+	color_oro = colors.HexColor("#D4AF37")
+	estilo_slogan = ParagraphStyle(
+		"SloganCotizacion",
+		parent=estilos["Normal"],
 		fontName="Helvetica-Bold",
-		fontSize=25,
-		leading=29,
-		textColor=colors.HexColor("#17324D"),
-		spaceAfter=2,
+		fontSize=11,
+		leading=14,
+		textColor=colors.white,
+		alignment=TA_CENTER,
 	)
-	estilo_subtitulo = ParagraphStyle(
-		"SubtituloCotizacion",
+	estilo_sub_slogan = ParagraphStyle(
+		"SubSloganCotizacion",
 		parent=estilos["Normal"],
 		fontName="Helvetica",
-		fontSize=12,
-		textColor=colors.HexColor("#527087"),
+		fontSize=9,
+		leading=11,
+		textColor=colors.lightgrey,
+		alignment=TA_CENTER,
+	)
+	estilo_fecha = ParagraphStyle(
+		"FechaCotizacion",
+		parent=estilos["Normal"],
+		fontName="Helvetica",
+		fontSize=10,
+		leading=14,
+		textColor=colors.white,
+		alignment=TA_RIGHT,
 	)
 	estilo_cliente = ParagraphStyle(
-		"DatosCliente",
+		"ClienteCotizacion",
 		parent=estilos["Normal"],
-		fontName="Helvetica",
-		fontSize=9.5,
-		leading=15,
+		fontName="Helvetica-Bold",
+		fontSize=11,
+		leading=14,
+		textColor=colors.HexColor("#1A1A1A"),
 	)
 	estilo_celda = ParagraphStyle(
 		"CeldaCotizacion",
@@ -82,128 +131,178 @@ def generar_cotizacion_pdf(
 		fontName="Helvetica",
 		fontSize=9,
 		leading=11,
+		textColor=colors.black,
+	)
+	estilo_encabezado_tabla = ParagraphStyle(
+		"EncabezadoTablaCotizacion",
+		parent=estilos["Normal"],
+		fontName="Helvetica-Bold",
+		fontSize=9,
+		leading=11,
+		alignment=TA_CENTER,
+		textColor=colors.whitesmoke,
 	)
 	estilo_total = ParagraphStyle(
 		"TotalCotizacion",
 		parent=estilos["Normal"],
 		fontName="Helvetica-Bold",
-		fontSize=16,
-		leading=20,
+		fontSize=13,
+		leading=17,
 		alignment=TA_RIGHT,
-		textColor=colors.HexColor("#17324D"),
+		textColor=colors.black,
 	)
 
-	if hasattr(sys, '_MEIPASS'):
-    	base_dir = sys._MEIPASS
-	else:
-    	base_dir = os.path.dirname(os.path.abspath(__file__))
-
-ruta_logo = os.path.join(base_dir, "logo.svg")
-	contenido = []
-	if os.path.exists(ruta_logo):
-		dibujo_logo = svg2rlg(ruta_logo)
-		if dibujo_logo and dibujo_logo.height:
-			factor = min(1, 70 / dibujo_logo.height)
-			dibujo_logo.width *= factor
-			dibujo_logo.height *= factor
-			dibujo_logo.scale(factor, factor)
-			contenido.extend([dibujo_logo, Spacer(1, 0.08 * inch)])
-
-	contenido.extend([
-		Paragraph("COTIZACIÓN", estilo_titulo),
-		Paragraph("Alquiladora LIDER", estilo_subtitulo),
-		Spacer(1, 0.18 * inch),
-	])
-
-	nombres_cliente = (
-		("Nombre", ("nombre", "name")),
-		("Teléfono", ("telefono", "teléfono", "phone")),
-		("Fecha", ("fecha", "date")),
-		("Dirección", ("direccion", "dirección", "address")),
+	elementos = []
+	dibujo_logo = _cargar_logo()
+	fecha = datetime.date.today().strftime("%d/%m/%Y")
+	texto_fecha = (
+		f"<font name='Helvetica-Bold' size=14 color='#D4AF37'>COTIZACIÓN</font>"
+		f"<br/><font size=9 color='white'>Ecatepec, Méx.<br/>{fecha}</font>"
 	)
-	cliente_filas = []
-	for etiqueta, claves in nombres_cliente:
-		valor = next((datos_cliente.get(clave) for clave in claves if clave in datos_cliente), None)
-		cliente_filas.append(
-			Paragraph(
-				f"<b>{etiqueta}:</b> {_texto(valor, 'No especificado')}",
-				estilo_cliente,
-			)
-		)
-
-	cliente = Table(
-		[cliente_filas[:2], cliente_filas[2:]],
-		colWidths=[3.55 * inch, 3.55 * inch],
-		rowHeights=[0.23 * inch, 0.23 * inch],
+	slogan = Paragraph(
+		"<font name='Helvetica-Bold' size=13 color='#D4AF37'>"
+		"Lonas Industriales y DERivados</font>"
+		"<br/><font size=9 color='#E0E0E0'>Renta de mobiliario y servicios "
+		"para eventos sociales</font>",
+		estilo_slogan,
 	)
-	cliente.setStyle(
+	encabezado = Table(
+		[
+			[
+				dibujo_logo or Paragraph("LIDER", estilo_slogan),
+				slogan,
+				Paragraph(texto_fecha, estilo_fecha),
+			]
+		],
+		colWidths=[2.0 * inch, 2.8 * inch, 2.5 * inch],
+	)
+	encabezado.setStyle(
 		TableStyle(
 			[
+				("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#1A1A1A")),
+				("LINEBELOW", (0, 0), (-1, -1), 2.5, color_oro),
 				("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+				("ALIGN", (2, 0), (2, 0), "RIGHT"),
 				("LEFTPADDING", (0, 0), (-1, -1), 0),
-				("RIGHTPADDING", (0, 0), (-1, -1), 12),
-				("TOPPADDING", (0, 0), (-1, -1), 0),
-				("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+				("RIGHTPADDING", (0, 0), (-1, -1), 0),
+				("TOPPADDING", (0, 0), (-1, -1), 15),
+				("BOTTOMPADDING", (0, 0), (-1, -1), 15),
 			]
 		)
 	)
-	contenido.extend([cliente, Spacer(1, 0.25 * inch)])
+	elementos.extend([encabezado, Spacer(1, 14)])
 
-	encabezados = ["Categoría", "Artículo", "Cant.", "P.U.", "Subtotal"]
-	filas = [encabezados]
+	nombre_cliente = (datos_cliente or {}).get("nombre")
+	if nombre_cliente:
+		datos_tabla_cliente = [["ATENCIÓN A:", _texto_seguro(nombre_cliente)]]
+		tabla_cliente = Table(
+			datos_tabla_cliente,
+			colWidths=[1.5 * inch, 4.0 * inch],
+			hAlign="LEFT",
+		)
+		tabla_cliente.setStyle(
+			TableStyle(
+				[
+					("BACKGROUND", (0, 0), (0, 0), colors.HexColor("#1A1A1A")),
+					("TEXTCOLOR", (0, 0), (0, 0), colors.white),
+					("BACKGROUND", (1, 0), (1, 0), colors.white),
+					("TEXTCOLOR", (1, 0), (1, 0), colors.black),
+					("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
+					("FONTSIZE", (0, 0), (-1, -1), 10),
+					("ALIGN", (0, 0), (0, 0), "CENTER"),
+					("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+					("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#1A1A1A")),
+					("INNERGRID", (0, 0), (-1, -1), 1, colors.HexColor("#1A1A1A")),
+					("TOPPADDING", (0, 0), (-1, -1), 6),
+					("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+				]
+			)
+		)
+		elementos.extend(
+			[
+				tabla_cliente,
+				Spacer(1, 14),
+			]
+		)
+
+	filas = [["CANT.", "DESCRIPCIÓN", "PRECIO UNIT.", "SUBTOTAL"]]
 	for partida in partidas or []:
 		filas.append(
 			[
-				_texto(_valor_partida(partida, 0, "categoria", "categoría", "category")),
-				_texto(_valor_partida(partida, 1, "articulo", "artículo", "item")),
-				_texto(_valor_partida(partida, 2, "cantidad", "cant", "quantity")),
-				_texto(_valor_partida(partida, 3, "precio_unitario", "pu", "precio", "price")),
-				_texto(_valor_partida(partida, 4, "subtotal", "importe")),
+				_formatear_cantidad(partida[2]),
+				_texto_seguro(partida[1]),
+				_texto_seguro(partida[3]),
+				_texto_seguro(partida[4]),
 			]
 		)
 
 	filas_formateadas = [
-		[Paragraph(f"<b>{celda}</b>", estilo_celda) for celda in filas[0]]
+		[Paragraph(_texto_seguro(celda), estilo_encabezado_tabla) for celda in filas[0]]
 	]
 	filas_formateadas.extend(
 		[[Paragraph(celda, estilo_celda) for celda in fila] for fila in filas[1:]]
 	)
-	tabla = Table(
+	tabla_partidas = Table(
 		filas_formateadas,
-		colWidths=[1.28 * inch, 2.42 * inch, 0.62 * inch, 1.08 * inch, 1.7 * inch],
+		colWidths=[1 * inch, 3.5 * inch, 1.3 * inch, 1.3 * inch],
 		repeatRows=1,
 	)
-	tabla.setStyle(
+	tabla_partidas.setStyle(
 		TableStyle(
 			[
-				("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#17324D")),
-				("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+				("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1A1A1A")),
+				("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+				("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+				("ALIGN", (0, 0), (-1, 0), "CENTER"),
+				("ALIGN", (0, 1), (0, -1), "CENTER"),
+				("ALIGN", (1, 1), (1, -1), "LEFT"),
+				("ALIGN", (2, 1), (-1, -1), "CENTER"),
 				("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-				("ALIGN", (2, 1), (-1, -1), "RIGHT"),
-				("ALIGN", (2, 0), (-1, 0), "RIGHT"),
-				("LEFTPADDING", (0, 0), (-1, -1), 7),
-				("RIGHTPADDING", (0, 0), (-1, -1), 7),
+				("BACKGROUND", (0, 1), (-1, -1), colors.white),
+				("LINEBELOW", (0, 1), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
+				("LEFTPADDING", (0, 0), (-1, -1), 6),
+				("RIGHTPADDING", (0, 0), (-1, -1), 6),
 				("TOPPADDING", (0, 0), (-1, -1), 7),
 				("BOTTOMPADDING", (0, 0), (-1, -1), 7),
-				("LINEBELOW", (0, 0), (-1, 0), 0.8, colors.HexColor("#17324D")),
-				("LINEBELOW", (0, 1), (-1, -1), 0.35, colors.HexColor("#D5DDE3")),
 			]
 		)
 	)
-	contenido.extend([tabla, Spacer(1, 0.2 * inch)])
+	for fila in range(2, len(filas), 2):
+		tabla_partidas.setStyle(
+			TableStyle(
+				[("BACKGROUND", (0, fila), (-1, fila), colors.HexColor("#F5F5F5"))]
+			)
+		)
+	elementos.extend([tabla_partidas, Spacer(1, 20)])
 
-	total_tabla = Table(
-		[[Paragraph(_texto(total, "0"), estilo_total)]],
-		colWidths=[7.1 * inch],
+	total_limpio = str(total_str or "").strip()
+	if total_limpio.upper().startswith("TOTAL:"):
+		total_limpio = total_limpio.split(":", 1)[1].strip()
+	tabla_total = Table(
+		[
+			[
+				Paragraph("TOTAL:", estilo_total),
+				Paragraph(_texto_seguro(total_limpio), estilo_total),
+			]
+		],
+		colWidths=[1.8 * inch, 1.5 * inch],
+		hAlign="RIGHT",
 	)
-	total_tabla.setStyle(
+	tabla_total.setStyle(
 		TableStyle(
 			[
+				("BACKGROUND", (0, 0), (-1, -1), color_oro),
+				("TEXTCOLOR", (0, 0), (-1, -1), colors.black),
+				("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
 				("ALIGN", (0, 0), (-1, -1), "RIGHT"),
-				("TOPPADDING", (0, 0), (-1, -1), 8),
-				("LINEABOVE", (0, 0), (-1, -1), 0.8, colors.HexColor("#17324D")),
+				("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+				("LEFTPADDING", (0, 0), (-1, -1), 10),
+				("RIGHTPADDING", (0, 0), (-1, -1), 10),
+				("TOPPADDING", (0, 0), (-1, -1), 9),
+				("BOTTOMPADDING", (0, 0), (-1, -1), 9),
 			]
 		)
 	)
-	contenido.append(total_tabla)
-	doc.build(contenido)
+	elementos.append(tabla_total)
+
+	doc.build(elementos, onFirstPage=dibujar_pie_pagina)

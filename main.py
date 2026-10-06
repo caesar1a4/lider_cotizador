@@ -394,7 +394,7 @@ class VentanaPrincipal(QMainWindow):
 		self.radios_ancho = []
 		self.spins_largo = []
 		self.lbls_area = []
-		self.anchos_carpa = [8, 10, 12, 15]
+		self.anchos_carpa = [6, 8, 10, 12, 15]
 		for fila, ancho in enumerate(self.anchos_carpa, start=1):
 			radio = QRadioButton(f"Ancho {ancho}m")
 			radio.toggled.connect(self.activar_boton_sugerencias)
@@ -414,6 +414,16 @@ class VentanaPrincipal(QMainWindow):
 			grid.addWidget(radio, fila, 0)
 			grid.addWidget(spin_largo, fila, 1)
 			grid.addWidget(lbl_area, fila, 2)
+
+		self.chk_carpa_libre = QCheckBox("Medida Libre (Ignorar invitados)")
+		self.spn_largo_libre = QSpinBox()
+		self.spn_largo_libre.setRange(5, 200)
+		self.spn_largo_libre.setSingleStep(5)
+		self.spn_largo_libre.setSuffix(" m")
+		self.spn_largo_libre.setEnabled(False)
+		fila_libre = len(self.anchos_carpa) + 1
+		grid.addWidget(self.chk_carpa_libre, fila_libre, 0, 1, 2)
+		grid.addWidget(self.spn_largo_libre, fila_libre, 2)
 
 		layout.addWidget(opciones_carpa)
 
@@ -445,6 +455,9 @@ class VentanaPrincipal(QMainWindow):
 		self.combo_paquete_mesas.addItem("Mesa c/10 Plegables Vestidas", 250.0)
 		self.combo_paquete_mesas.addItem("Mesa c/10 Tiffany", 380.0)
 		resultados_layout.addWidget(self.combo_paquete_mesas)
+		self.chk_tiffany_12 = QCheckBox("Montaje a 12 sillas (Excepción)")
+		self.chk_tiffany_12.setVisible(False)
+		resultados_layout.addWidget(self.chk_tiffany_12)
 
 		self.chk_pista = QCheckBox("Incluir Sugerencia de Pista")
 		self.chk_pista.setChecked(True)
@@ -453,6 +466,26 @@ class VentanaPrincipal(QMainWindow):
 		resultados_layout.addWidget(self.chk_pista)
 		self.combo_tipo_pista = QComboBox()
 		resultados_layout.addWidget(self.combo_tipo_pista)
+		self.chk_pista_libre = QCheckBox("Diseño Manual (Ignorar invitados)")
+		self.chk_pista_libre.setEnabled(False)
+		resultados_layout.addWidget(self.chk_pista_libre)
+		self.layout_modulos_pista = QHBoxLayout()
+		self.spn_pista_modulos_ancho = QSpinBox()
+		self.spn_pista_modulos_largo = QSpinBox()
+		for spin, prefijo in [
+			(self.spn_pista_modulos_ancho, "Ancho: "),
+			(self.spn_pista_modulos_largo, "Largo: "),
+		]:
+			spin.setRange(1, 50)
+			spin.setValue(4)
+			spin.setPrefix(prefijo)
+			spin.setSuffix(" mód.")
+			spin.setEnabled(False)
+			self.layout_modulos_pista.addWidget(spin)
+		self.lbl_pista_medidas = QLabel("Medida real: 5.00m x 5.00m")
+		self.lbl_pista_medidas.setVisible(False)
+		resultados_layout.addLayout(self.layout_modulos_pista)
+		resultados_layout.addWidget(self.lbl_pista_medidas)
 
 		layout.addWidget(resultados)
 		layout.addStretch()
@@ -530,6 +563,12 @@ class VentanaPrincipal(QMainWindow):
 			self.combo_tipo_pista,
 		]:
 			combo.currentIndexChanged.connect(self.activar_boton_sugerencias)
+		self.combo_paquete_mesas.currentTextChanged.connect(
+			self.alternar_opcion_tiffany
+		)
+		self.chk_pista.stateChanged.connect(self.alternar_disponibilidad_pista)
+		self.chk_pista_libre.stateChanged.connect(self.alternar_modo_pista)
+		self.chk_pista_libre.stateChanged.connect(self.activar_boton_sugerencias)
 		self.combo_estilo.currentIndexChanged.connect(self.alternar_precio_decoracion)
 		self.spn_precio_base_carpa.valueChanged.connect(
 			self.activar_boton_sugerencias
@@ -537,8 +576,23 @@ class VentanaPrincipal(QMainWindow):
 		self.spn_precio_decoracion.valueChanged.connect(
 			self.activar_boton_sugerencias
 		)
-		for checkbox in [self.chk_carpa, self.chk_mesas, self.chk_pista]:
+		for checkbox in [
+			self.chk_carpa,
+			self.chk_mesas,
+			self.chk_pista,
+			self.chk_tiffany_12,
+		]:
 			checkbox.stateChanged.connect(self.activar_boton_sugerencias)
+		self.chk_carpa_libre.stateChanged.connect(self.alternar_modo_carpa)
+		self.chk_carpa_libre.stateChanged.connect(self.activar_boton_sugerencias)
+		self.spn_largo_libre.valueChanged.connect(self.activar_boton_sugerencias)
+		self.spn_largo_libre.valueChanged.connect(self.actualizar_sugerencias)
+		for spin in [
+			self.spn_pista_modulos_ancho,
+			self.spn_pista_modulos_largo,
+		]:
+			spin.valueChanged.connect(self.actualizar_etiqueta_pista)
+			spin.valueChanged.connect(self.activar_boton_sugerencias)
 
 	def abrir_gestor_inventario(self):
 		dialogo = DialogoGestorInventario(self)
@@ -547,6 +601,44 @@ class VentanaPrincipal(QMainWindow):
 	def alternar_precio_decoracion(self):
 		es_sencilla = self.combo_estilo.currentText() == "Sencilla"
 		self.spn_precio_decoracion.setEnabled(not es_sencilla)
+
+	def alternar_disponibilidad_pista(self, estado):
+		es_pista_seleccionada = bool(estado)
+		self.chk_pista_libre.setEnabled(es_pista_seleccionada)
+		if not es_pista_seleccionada:
+			self.chk_pista_libre.setChecked(False)
+
+	def alternar_modo_pista(self):
+		es_manual = self.chk_pista_libre.isChecked()
+		for spin in [
+			self.spn_pista_modulos_ancho,
+			self.spn_pista_modulos_largo,
+		]:
+			spin.setEnabled(es_manual)
+		self.lbl_pista_medidas.setVisible(es_manual)
+		if es_manual:
+			self.actualizar_etiqueta_pista()
+
+	def actualizar_etiqueta_pista(self):
+		ancho_m = self.spn_pista_modulos_ancho.value() * 1.25
+		largo_m = self.spn_pista_modulos_largo.value() * 1.25
+		self.lbl_pista_medidas.setText(
+			f"Medida real: {ancho_m:.2f}m x {largo_m:.2f}m"
+		)
+
+	def alternar_opcion_tiffany(self, texto):
+		es_tiffany = "Tiffany" in texto
+		self.chk_tiffany_12.setVisible(es_tiffany)
+		if not es_tiffany:
+			self.chk_tiffany_12.setChecked(False)
+
+	def alternar_modo_carpa(self):
+		es_medida_libre = self.chk_carpa_libre.isChecked()
+		self.spn_largo_libre.setEnabled(es_medida_libre)
+		self.lbl_minimo_m2.setEnabled(not es_medida_libre)
+		for lbl_area in self.lbls_area:
+			lbl_area.setEnabled(not es_medida_libre)
+		self.actualizar_sugerencias()
 
 	def actualizar_sugerencias(self):
 		invitados = self.spin_invitados.value()
@@ -585,9 +677,12 @@ class VentanaPrincipal(QMainWindow):
 			self.lbls_area,
 		):
 			if radio.isChecked():
-				self.lbl_carpa.setText(
-					f"Carpa Sugerida: {ancho}m x {spin_largo.value()}m"
+				largo = (
+					self.spn_largo_libre.value()
+					if self.chk_carpa_libre.isChecked()
+					else spin_largo.value()
 				)
+				self.lbl_carpa.setText(f"Carpa Sugerida: {ancho}m x {largo}m")
 				break
 
 	def recalcular_area_manual(self, _valor):
@@ -626,7 +721,11 @@ class VentanaPrincipal(QMainWindow):
 				self.tabla.removeRow(fila)
 
 		ancho, spin_largo = seleccion
-		largo = spin_largo.value()
+		largo = (
+			self.spn_largo_libre.value()
+			if self.chk_carpa_libre.isChecked()
+			else spin_largo.value()
+		)
 		area_carpa = ancho * largo
 		estilo = self.combo_estilo.currentText()
 		if self.chk_carpa.isChecked():
@@ -647,20 +746,35 @@ class VentanaPrincipal(QMainWindow):
 
 		invitados = self.spin_invitados.value()
 		if self.chk_mesas.isChecked():
-			precio_mesa = self.combo_paquete_mesas.currentData()
+			precio_paquete_10 = self.combo_paquete_mesas.currentData()
 			nombre_mesa = self.combo_paquete_mesas.currentText()
+			if "Tiffany" in nombre_mesa and self.chk_tiffany_12.isChecked():
+				cantidad_mesas = math.ceil(invitados / 12)
+				precio_mesa = precio_paquete_10 * 1.2
+				nombre_mesa = "Mesa c/12 Tiffany"
+			else:
+				cantidad_mesas = math.ceil(invitados / 10)
+				precio_mesa = precio_paquete_10
 			self.agregar_fila_tabla(
 				"MESAS",
 				nombre_mesa,
-				math.ceil(invitados / 10),
+				cantidad_mesas,
 				precio_mesa,
 				es_sugerencia=True,
 			)
 
 		if self.chk_pista.isChecked():
-			area_pista, dimensiones_pista = calculos.calcular_pista(invitados)
+			if self.chk_pista_libre.isChecked():
+				ancho_m = self.spn_pista_modulos_ancho.value() * 1.25
+				largo_m = self.spn_pista_modulos_largo.value() * 1.25
+				area_pista = ancho_m * largo_m
+				tipo_pista = (
+					f"Pista de Baile ({ancho_m:.2f}x{largo_m:.2f}m)"
+				)
+			else:
+				area_pista, dimensiones_pista = calculos.calcular_pista(invitados)
+				tipo_pista = self.combo_tipo_pista.currentText()
 			precio_pista = self.combo_tipo_pista.currentData()
-			tipo_pista = self.combo_tipo_pista.currentText()
 			self.agregar_fila_tabla(
 				"PISTAS",
 				tipo_pista,
