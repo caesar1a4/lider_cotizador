@@ -164,6 +164,74 @@ class DialogoCliente(QDialog):
 		}
 
 
+class DialogoPistaMixta(QDialog):
+	def __init__(self, filas, columnas, parent=None):
+		super().__init__(parent)
+		self.setWindowTitle("Diseñador de Pista Mixta")
+		self.max_iluminados = 18
+		self.usados_iluminados = 0
+		self.total_madera = filas * columnas
+
+		layout = QVBoxLayout(self)
+		herramientas = QHBoxLayout()
+		self.radio_madera = QRadioButton("Madera")
+		self.radio_iluminada = QRadioButton("Iluminada")
+		self.radio_madera.setChecked(True)
+		self.lbl_contador = QLabel("Iluminados: 0 / 18")
+		self.lbl_contador.setStyleSheet("font-weight: bold; color: #176b3a;")
+		herramientas.addWidget(self.radio_madera)
+		herramientas.addWidget(self.radio_iluminada)
+		herramientas.addStretch()
+		herramientas.addWidget(self.lbl_contador)
+		layout.addLayout(herramientas)
+
+		grid = QGridLayout()
+		grid.setSpacing(2)
+		self.botones = []
+		for r in range(filas):
+			fila_botones = []
+			for c in range(columnas):
+				btn = QPushButton("")
+				btn.setFixedSize(40, 40)
+				btn.tipo = "madera"
+				btn.setStyleSheet(
+					"background-color: #8B5A2B; border: 1px solid black;"
+				)
+				btn.clicked.connect(
+					lambda checked=False, b=btn: self.pintar_modulo(b)
+				)
+				grid.addWidget(btn, r, c)
+				fila_botones.append(btn)
+			self.botones.append(fila_botones)
+		layout.addLayout(grid)
+
+		btn_confirmar = QPushButton("Confirmar Diseño")
+		btn_confirmar.clicked.connect(self.accept)
+		layout.addWidget(btn_confirmar)
+
+	def pintar_modulo(self, btn):
+		if self.radio_iluminada.isChecked() and btn.tipo == "madera":
+			if self.usados_iluminados >= self.max_iluminados:
+				return
+			btn.tipo = "iluminada"
+			btn.setStyleSheet(
+				"background-color: #E0FFFF; border: 2px solid cyan;"
+			)
+			self.usados_iluminados += 1
+			self.total_madera -= 1
+		elif self.radio_madera.isChecked() and btn.tipo == "iluminada":
+			btn.tipo = "madera"
+			btn.setStyleSheet(
+				"background-color: #8B5A2B; border: 1px solid black;"
+			)
+			self.usados_iluminados -= 1
+			self.total_madera += 1
+
+		self.lbl_contador.setText(
+			f"Iluminados: {self.usados_iluminados} / 18"
+		)
+
+
 class DialogoGestorInventario(QDialog):
 	def __init__(self, parent=None):
 		super().__init__(parent)
@@ -334,6 +402,8 @@ class VentanaPrincipal(QMainWindow):
 		self.setWindowTitle("Cotizador Interno - Alquiladora LIDER")
 		self.resize(1200, 800)
 		self.historial_estados = []
+		self.memoria_mixta_madera = None
+		self.memoria_mixta_ilum = None
 		self.gestor_bd = database.GestorBD()
 		self._crear_interfaz()
 		self._conectar_eventos()
@@ -486,6 +556,9 @@ class VentanaPrincipal(QMainWindow):
 		self.lbl_pista_medidas.setVisible(False)
 		resultados_layout.addLayout(self.layout_modulos_pista)
 		resultados_layout.addWidget(self.lbl_pista_medidas)
+		self.btn_disenar_mixta = QPushButton("Diseñar Pista Mixta")
+		self.btn_disenar_mixta.setVisible(False)
+		resultados_layout.addWidget(self.btn_disenar_mixta)
 
 		layout.addWidget(resultados)
 		layout.addStretch()
@@ -535,8 +608,12 @@ class VentanaPrincipal(QMainWindow):
 		self.lbl_total.setStyleSheet("color: #176b3a;")
 		self.lbl_total.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 		barra_total = QHBoxLayout()
-		self.btn_generar_pdf = QPushButton("📄 Generar PDF")
-		barra_total.addWidget(self.btn_generar_pdf)
+		botones_pdf = QHBoxLayout()
+		self.btn_pdf_a = QPushButton("Generar PDF (Formato A - Integrado)")
+		self.btn_pdf_b = QPushButton("Generar PDF (Formato B - Anexo)")
+		botones_pdf.addWidget(self.btn_pdf_a)
+		botones_pdf.addWidget(self.btn_pdf_b)
+		barra_total.addLayout(botones_pdf)
 		barra_total.addStretch()
 		barra_total.addWidget(self.lbl_total)
 		layout.addLayout(barra_total)
@@ -550,8 +627,10 @@ class VentanaPrincipal(QMainWindow):
 		self.btn_eliminar_fila.clicked.connect(self.eliminar_fila)
 		self.btn_limpiar.clicked.connect(self.limpiar_cotizacion)
 		self.btn_deshacer.clicked.connect(self.deshacer)
-		self.btn_generar_pdf.clicked.connect(self.abrir_dialogo_pdf)
+		self.btn_pdf_a.clicked.connect(lambda: self.generar_pdf(tipo="A"))
+		self.btn_pdf_b.clicked.connect(lambda: self.generar_pdf(tipo="B"))
 		self.btn_inventario.clicked.connect(self.abrir_gestor_inventario)
+		self.btn_disenar_mixta.clicked.connect(self.abrir_disenador_mixto)
 		self.tabla.cellChanged.connect(self.recalcular_fila)
 		for radio in self.radios_ancho:
 			radio.toggled.connect(self.actualizar_sugerencias)
@@ -565,6 +644,9 @@ class VentanaPrincipal(QMainWindow):
 			combo.currentIndexChanged.connect(self.activar_boton_sugerencias)
 		self.combo_paquete_mesas.currentTextChanged.connect(
 			self.alternar_opcion_tiffany
+		)
+		self.combo_tipo_pista.currentTextChanged.connect(
+			self.alternar_disenador_mixto
 		)
 		self.chk_pista.stateChanged.connect(self.alternar_disponibilidad_pista)
 		self.chk_pista_libre.stateChanged.connect(self.alternar_modo_pista)
@@ -616,8 +698,26 @@ class VentanaPrincipal(QMainWindow):
 		]:
 			spin.setEnabled(es_manual)
 		self.lbl_pista_medidas.setVisible(es_manual)
+		self.alternar_disenador_mixto()
 		if es_manual:
 			self.actualizar_etiqueta_pista()
+
+	def alternar_disenador_mixto(self):
+		es_mixta = "Mixta" in self.combo_tipo_pista.currentText()
+		self.btn_disenar_mixta.setVisible(
+			es_mixta and self.chk_pista_libre.isChecked()
+		)
+
+	def abrir_disenador_mixto(self):
+		filas = self.spn_pista_modulos_ancho.value()
+		columnas = self.spn_pista_modulos_largo.value()
+		dialogo = DialogoPistaMixta(filas, columnas, self)
+		if dialogo.exec() != QDialog.Accepted:
+			return
+		self.memoria_mixta_madera = dialogo.total_madera
+		self.memoria_mixta_ilum = dialogo.usados_iluminados
+		self.actualizar_sugerencias()
+		self.combo_tipo_pista.setCurrentIndex(2)
 
 	def actualizar_etiqueta_pista(self):
 		ancho_m = self.spn_pista_modulos_ancho.value() * 1.25
@@ -736,12 +836,23 @@ class VentanaPrincipal(QMainWindow):
 				else 0.0
 			)
 			precio_final_m2 = precio_base + precio_deco
+			desc = (
+				f"Carpa elegante de {ancho}x{largo}m.<br/>"
+				"- Incluye cortina perimetral con simulación de ventana, falso "
+				"plafón de tela, cubre postes blancos e iluminación."
+			)
+			if precio_deco:
+				desc += (
+					"<br/>- Decoración perimetral con telas en tergal francés, "
+					"decoración aérea con telas con candelabro."
+				)
 			self.agregar_fila_tabla(
 				"CARPAS",
 				f"Carpa {estilo} {ancho}x{largo}m",
 				area_carpa,
 				precio_final_m2,
 				es_sugerencia=True,
+				descripcion=desc,
 			)
 
 		invitados = self.spin_invitados.value()
@@ -752,42 +863,106 @@ class VentanaPrincipal(QMainWindow):
 				cantidad_mesas = math.ceil(invitados / 12)
 				precio_mesa = precio_paquete_10 * 1.2
 				nombre_mesa = "Mesa c/12 Tiffany"
+				sillas_por_mesa = 12
 			else:
 				cantidad_mesas = math.ceil(invitados / 10)
 				precio_mesa = precio_paquete_10
+				sillas_por_mesa = 10
+			if "Tiffany" in nombre_mesa:
+				desc = (
+					f"Mesa imperial con {sillas_por_mesa} sillas Tiffany de lujo "
+					"y mantelería en color a elegir."
+				)
+			elif "Vestidas" in nombre_mesa:
+				desc = "Mesas en montaje francés con mantelería en colores a elegir."
+			else:
+				desc = "Tablón rectangular con mantel blanco y 10 sillas plásticas plegables."
 			self.agregar_fila_tabla(
 				"MESAS",
 				nombre_mesa,
 				cantidad_mesas,
 				precio_mesa,
 				es_sugerencia=True,
+				descripcion=desc,
 			)
 
 		if self.chk_pista.isChecked():
-			if self.chk_pista_libre.isChecked():
+			es_pista_mixta = "Mixta" in self.combo_tipo_pista.currentText()
+			hay_diseno_mixto = (
+				es_pista_mixta
+				and self.memoria_mixta_madera is not None
+				and self.memoria_mixta_ilum is not None
+			)
+			if hay_diseno_mixto:
+				precio_m2_madera = 90.0
+				precio_m2_iluminada = 290.0
+				costo_pista_mixta = (
+					self.memoria_mixta_madera * 1.5625 * precio_m2_madera
+					+ self.memoria_mixta_ilum * 1.5625 * precio_m2_iluminada
+				)
+				self.agregar_fila_tabla(
+					"PISTAS",
+					f"Pista Mixta ({self.memoria_mixta_madera} mód. madera, "
+					f"{self.memoria_mixta_ilum} mód. iluminados)",
+					1,
+					costo_pista_mixta,
+					es_sugerencia=True,
+					descripcion=(
+						"Pista de baile mixta con módulos de madera e iluminación LED "
+						"personalizable. "
+						f"{self.memoria_mixta_madera} módulos de madera y "
+						f"{self.memoria_mixta_ilum} módulos iluminados."
+					),
+				)
+			elif self.chk_pista_libre.isChecked():
 				ancho_m = self.spn_pista_modulos_ancho.value() * 1.25
 				largo_m = self.spn_pista_modulos_largo.value() * 1.25
 				area_pista = ancho_m * largo_m
 				tipo_pista = (
 					f"Pista de Baile ({ancho_m:.2f}x{largo_m:.2f}m)"
 				)
+				precio_pista = self.combo_tipo_pista.currentData()
+				desc = (
+					f"Pista de baile con módulos de "
+					f"{'iluminación LED personalizable' if 'Iluminada' in self.combo_tipo_pista.currentText() else 'madera'} "
+					f"y medidas de {ancho_m:.2f}x{largo_m:.2f}m."
+				)
 			else:
 				area_pista, dimensiones_pista = calculos.calcular_pista(invitados)
 				tipo_pista = self.combo_tipo_pista.currentText()
-			precio_pista = self.combo_tipo_pista.currentData()
-			self.agregar_fila_tabla(
-				"PISTAS",
-				tipo_pista,
-				area_pista,
-				precio_pista,
-				es_sugerencia=True,
-			)
+				ancho_m, largo_m = dimensiones_pista.removesuffix("m").split("m x ")
+				precio_pista = self.combo_tipo_pista.currentData()
+				if "Iluminada" in tipo_pista:
+					desc = (
+						"Pista de baile con módulos de iluminación LED personalizable "
+						f"y medidas de {ancho_m}x{largo_m}m."
+					)
+				else:
+					desc = (
+						"Pista de baile con módulos de madera y medidas de "
+						f"{ancho_m}x{largo_m}m."
+					)
+			if not hay_diseno_mixto:
+				self.agregar_fila_tabla(
+					"PISTAS",
+					tipo_pista,
+					area_pista,
+					precio_pista,
+					es_sugerencia=True,
+					descripcion=desc,
+				)
 		self.aplicar_button.setText("Sugerencias Aplicadas")
 		self.aplicar_button.setEnabled(False)
 		self.calcular_total()
 
 	def agregar_fila_tabla(
-		self, categoria, articulo, cantidad, precio_unitario, es_sugerencia=False
+		self,
+		categoria,
+		articulo,
+		cantidad,
+		precio_unitario,
+		es_sugerencia=False,
+		descripcion="",
 	):
 		self.tabla.blockSignals(True)
 		try:
@@ -805,6 +980,8 @@ class VentanaPrincipal(QMainWindow):
 				item = QTableWidgetItem(valor)
 				if columna == 0 and es_sugerencia:
 					item.setData(Qt.UserRole, True)
+				if columna == 1:
+					item.setData(Qt.UserRole + 1, descripcion or str(articulo))
 				if columna not in (2, 3):
 					item.setFlags(item.flags() & ~Qt.ItemIsEditable)
 				self.tabla.setItem(fila, columna, item)
@@ -909,7 +1086,7 @@ class VentanaPrincipal(QMainWindow):
 			contador += 1
 		return ruta_final
 
-	def abrir_dialogo_pdf(self):
+	def generar_pdf(self, tipo):
 		if self.tabla.rowCount() == 0:
 			QMessageBox.warning(
 				self,
@@ -925,10 +1102,14 @@ class VentanaPrincipal(QMainWindow):
 		datos_cliente = dialogo.obtener_datos()
 		partidas = []
 		for fila in range(self.tabla.rowCount()):
+			articulo = self.tabla.item(fila, 1)
 			partidas.append(
 				[
-					self.tabla.item(fila, columna).text()
-					for columna in range(self.tabla.columnCount())
+					self.tabla.item(fila, 2).text(),
+					articulo.text(),
+					articulo.data(Qt.UserRole + 1) or articulo.text(),
+					self.tabla.item(fila, 3).text(),
+					self.tabla.item(fila, 4).text(),
 				]
 			)
 
@@ -949,6 +1130,7 @@ class VentanaPrincipal(QMainWindow):
 			partidas,
 			self.lbl_total.text(),
 			ruta_salida,
+			tipo_formato=tipo,
 		)
 		QMessageBox.information(
 			self,
@@ -963,6 +1145,9 @@ class VentanaPrincipal(QMainWindow):
 			estado.append(
 				{
 					"valores": [item.text() if item else "" for item in items],
+					"descripcion": (
+						items[1].data(Qt.UserRole + 1) if items[1] else ""
+					),
 					"es_sugerencia": bool(
 						items[0] and items[0].data(Qt.UserRole) is True
 					),
@@ -985,6 +1170,8 @@ class VentanaPrincipal(QMainWindow):
 					item = QTableWidgetItem(valor)
 					if columna == 0 and registro["es_sugerencia"]:
 						item.setData(Qt.UserRole, True)
+					if columna == 1:
+						item.setData(Qt.UserRole + 1, registro.get("descripcion", ""))
 					if columna not in (2, 3):
 						item.setFlags(item.flags() & ~Qt.ItemIsEditable)
 					self.tabla.setItem(fila, columna, item)

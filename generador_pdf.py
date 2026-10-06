@@ -37,7 +37,7 @@ def dibujar_pie_pagina(canvas, doc):
 		letter[0] / 2,
 		35,
 		"Teléfonos: 55 19412496 / 55 43327867 | Instagram: "
-		"@alquiladora.lider | www.alquiladoralider.com",
+		"@alquiladora.lider | https://www.alquiladoralider.com",
 	)
 	canvas.drawCentredString(
 		letter[0] / 2,
@@ -50,6 +50,10 @@ def dibujar_pie_pagina(canvas, doc):
 
 def _texto_seguro(valor):
 	return escape("" if valor is None else str(valor))
+
+
+def _texto_html_seguro(valor):
+	return _texto_seguro(valor).replace("&lt;br/&gt;", "<br/>")
 
 
 def _formatear_cantidad(valor):
@@ -79,7 +83,9 @@ def _cargar_logo():
 	return dibujo_logo
 
 
-def generar_cotizacion_pdf(datos_cliente, partidas, total_str, ruta_salida):
+def generar_cotizacion_pdf(
+	datos_cliente, partidas, total_str, ruta_salida, tipo_formato="A"
+):
 	doc = SimpleDocTemplate(
 		ruta_salida,
 		pagesize=letter,
@@ -227,14 +233,24 @@ def generar_cotizacion_pdf(datos_cliente, partidas, total_str, ruta_salida):
 
 	filas = [["CANT.", "DESCRIPCIÓN", "PRECIO UNIT.", "SUBTOTAL"]]
 	for partida in partidas or []:
+		nombre = _texto_seguro(partida[1])
+		descripcion = _texto_html_seguro(partida[2])
+		if tipo_formato == "A":
+			texto_descripcion = (
+				f"<font name='Helvetica-Bold'>{nombre}</font><br/>"
+				f"<font size=8 color='#444444'>{descripcion}</font>"
+			)
+		else:
+			texto_descripcion = nombre
 		filas.append(
 			[
-				_formatear_cantidad(partida[2]),
-				_texto_seguro(partida[1]),
+				_formatear_cantidad(partida[0]),
+				texto_descripcion,
 				_texto_seguro(partida[3]),
 				_texto_seguro(partida[4]),
 			]
 		)
+	anchos_tabla = [1 * inch, 3.5 * inch, 1.3 * inch, 1.3 * inch]
 
 	filas_formateadas = [
 		[Paragraph(_texto_seguro(celda), estilo_encabezado_tabla) for celda in filas[0]]
@@ -244,7 +260,7 @@ def generar_cotizacion_pdf(datos_cliente, partidas, total_str, ruta_salida):
 	)
 	tabla_partidas = Table(
 		filas_formateadas,
-		colWidths=[1 * inch, 3.5 * inch, 1.3 * inch, 1.3 * inch],
+		colWidths=anchos_tabla,
 		repeatRows=1,
 	)
 	tabla_partidas.setStyle(
@@ -304,5 +320,46 @@ def generar_cotizacion_pdf(datos_cliente, partidas, total_str, ruta_salida):
 		)
 	)
 	elementos.append(tabla_total)
+
+	if tipo_formato == "B":
+		elementos.extend([Spacer(1, 20), Paragraph(
+			"<font name='Helvetica-Bold' size=11 color='#D4AF37'>"
+			"DESGLOSE DE CONCEPTOS</font>",
+			estilo_celda,
+		), Spacer(1, 10)])
+		datos_conceptos = [
+			["CONCEPTO", "DESCRIPCIÓN DETALLADA"],
+		]
+		for partida in partidas or []:
+			datos_conceptos.append(
+				[
+					Paragraph(f"<b>{_texto_seguro(partida[1])}</b>", estilo_celda),
+					Paragraph(_texto_html_seguro(partida[2]), estilo_celda),
+				]
+			)
+		filas_conceptos = [
+			[Paragraph(_texto_seguro(celda), estilo_encabezado_tabla) for celda in datos_conceptos[0]],
+		]
+		filas_conceptos.extend(datos_conceptos[1:])
+		tabla_conceptos = Table(
+			filas_conceptos,
+			colWidths=[2.5 * inch, 4.8 * inch],
+			repeatRows=1,
+		)
+		tabla_conceptos.setStyle(
+			TableStyle(
+				[
+					("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1A1A1A")),
+					("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+					("LINEBELOW", (0, 1), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
+					("VALIGN", (0, 0), (-1, -1), "TOP"),
+					("LEFTPADDING", (0, 0), (-1, -1), 6),
+					("RIGHTPADDING", (0, 0), (-1, -1), 6),
+					("TOPPADDING", (0, 0), (-1, -1), 7),
+					("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+				]
+			)
+		)
+		elementos.append(tabla_conceptos)
 
 	doc.build(elementos, onFirstPage=dibujar_pie_pagina)
