@@ -27,7 +27,8 @@ class GestorBD:
 					articulo TEXT NOT NULL,
 					precio_proveedor REAL DEFAULT 0.0,
 					precio_publico REAL NOT NULL,
-					unidad_medida TEXT NOT NULL
+					unidad_medida TEXT NOT NULL,
+					descripcion TEXT DEFAULT ''
 				)
 				"""
 			)
@@ -39,6 +40,7 @@ class GestorBD:
 		precio_proveedor,
 		precio_publico,
 		unidad_medida,
+		descripcion: str = "",
 	):
 		with self._conectar() as conexion:
 			cursor = conexion.execute(
@@ -48,8 +50,9 @@ class GestorBD:
 					articulo,
 					precio_proveedor,
 					precio_publico,
-					unidad_medida
-				) VALUES (?, ?, ?, ?, ?)
+					unidad_medida,
+					descripcion
+				) VALUES (?, ?, ?, ?, ?, ?)
 				""",
 				(
 					categoria,
@@ -57,6 +60,7 @@ class GestorBD:
 					precio_proveedor,
 					precio_publico,
 					unidad_medida,
+					descripcion,
 				),
 			)
 			return cursor.lastrowid
@@ -80,13 +84,14 @@ class GestorBD:
 		precio_prov: float,
 		precio_pub: float,
 		unidad: str,
+		descripcion: str = "",
 	):
 		with self._conectar() as conn:
 			conn.execute(
 				"""
 				UPDATE Catalogo_Productos
 				SET categoria=?, articulo=?, precio_proveedor=?,
-					precio_publico=?, unidad_medida=?
+					precio_publico=?, unidad_medida=?, descripcion=?
 				WHERE id=?
 				""",
 				(
@@ -95,9 +100,19 @@ class GestorBD:
 					precio_prov,
 					precio_pub,
 					unidad,
+					descripcion,
 					id_producto,
 				),
 			)
+
+	def obtener_descripcion(self, articulo: str) -> str:
+		with self._conectar() as conn:
+			cursor = conn.execute(
+				"SELECT descripcion FROM Catalogo_Productos WHERE articulo = ?",
+				(articulo,),
+			)
+			fila = cursor.fetchone()
+			return fila["descripcion"] if fila else ""
 
 	def eliminar_producto(self, id_producto: int):
 		with self._conectar() as conn:

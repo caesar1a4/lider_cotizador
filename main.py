@@ -11,1190 +11,1222 @@ import generador_pdf
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
-	QApplication,
-	QAbstractItemView,
-	QCheckBox,
-	QComboBox,
-	QDialog,
-	QDoubleSpinBox,
-	QFileDialog,
-	QFormLayout,
-	QFrame,
-	QGridLayout,
-	QGroupBox,
-	QHBoxLayout,
-	QHeaderView,
-	QInputDialog,
-	QLabel,
-	QLineEdit,
-	QMainWindow,
-	QMessageBox,
-	QPushButton,
-	QRadioButton,
-	QSpinBox,
-	QStyledItemDelegate,
-	QTableWidget,
-	QTableWidgetItem,
-	QVBoxLayout,
-	QWidget,
+    QApplication,
+    QAbstractItemView,
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QDoubleSpinBox,
+    QFileDialog,
+    QFormLayout,
+    QFrame,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QInputDialog,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QMessageBox,
+    QPushButton,
+    QRadioButton,
+    QSpinBox,
+    QStyledItemDelegate,
+    QTableWidget,
+    QTableWidgetItem,
+        QTextEdit,
+    QVBoxLayout,
+    QWidget,
 )
 
 
 def formatear_cantidad(valor: float) -> str:
-	valor = float(valor)
-	if valor.is_integer():
-		return str(int(valor))
-	return str(valor)
+    valor = float(valor)
+    if valor.is_integer():
+        return str(int(valor))
+    return str(valor)
 
 
 def formatear_moneda(valor: float) -> str:
-	return f"${float(valor):,.2f}"
+    return f"${float(valor):,.2f}"
 
 
 def limpiar_moneda(texto: str) -> float:
-	try:
-		return float(str(texto).replace("$", "").replace(",", "").strip())
-	except (TypeError, ValueError):
-		return 0.0
+    try:
+        return float(str(texto).replace("$", "").replace(",", "").strip())
+    except (TypeError, ValueError):
+        return 0.0
 
 
 class DialogoBuscador(QDialog):
-	def __init__(self, catalogo, parent=None):
-		super().__init__(parent)
-		self.setWindowTitle("Buscar artículo")
-		self.resize(600, 400)
-		self.producto_seleccionado = None
+    def __init__(self, catalogo, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Buscar artículo")
+        self.resize(600, 400)
+        self.producto_seleccionado = None
 
-		layout = QVBoxLayout(self)
-		self.buscar_input = QLineEdit()
-		self.buscar_input.setPlaceholderText("Buscar artículo...")
-		layout.addWidget(self.buscar_input)
+        layout = QVBoxLayout(self)
+        self.buscar_input = QLineEdit()
+        self.buscar_input.setPlaceholderText("Buscar artículo...")
+        layout.addWidget(self.buscar_input)
 
-		self.tabla = QTableWidget(0, 3)
-		self.tabla.setHorizontalHeaderLabels(["Categoría", "Artículo", "Precio"])
-		self.tabla.setEditTriggers(QTableWidget.NoEditTriggers)
-		self.tabla.setSelectionBehavior(QTableWidget.SelectRows)
-		self.tabla.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-		layout.addWidget(self.tabla)
+        self.tabla = QTableWidget(0, 3)
+        self.tabla.setHorizontalHeaderLabels(["Categoría", "Artículo", "Precio"])
+        self.tabla.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.tabla.setSelectionBehavior(QTableWidget.SelectRows)
+        self.tabla.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        layout.addWidget(self.tabla)
 
-		botones = QHBoxLayout()
-		self.btn_agregar = QPushButton("Agregar")
-		self.btn_cancelar = QPushButton("Cancelar")
-		botones.addStretch()
-		botones.addWidget(self.btn_agregar)
-		botones.addWidget(self.btn_cancelar)
-		layout.addLayout(botones)
+        botones = QHBoxLayout()
+        self.btn_agregar = QPushButton("Agregar")
+        self.btn_cancelar = QPushButton("Cancelar")
+        botones.addStretch()
+        botones.addWidget(self.btn_agregar)
+        botones.addWidget(self.btn_cancelar)
+        layout.addLayout(botones)
 
-		for producto in catalogo:
-			fila = self.tabla.rowCount()
-			self.tabla.insertRow(fila)
-			valores = (
-				producto["categoria"] if isinstance(producto, dict) else producto[0],
-				producto["articulo"] if isinstance(producto, dict) else producto[1],
-				producto["precio"] if isinstance(producto, dict) else producto[2],
-			)
-			for columna, valor in enumerate(valores):
-				self.tabla.setItem(fila, columna, QTableWidgetItem(str(valor)))
+        for producto in catalogo:
+            fila = self.tabla.rowCount()
+            self.tabla.insertRow(fila)
+            valores = (
+                producto["categoria"] if isinstance(producto, dict) else producto[0],
+                producto["articulo"] if isinstance(producto, dict) else producto[1],
+                producto["precio"] if isinstance(producto, dict) else producto[2],
+            )
+            for columna, valor in enumerate(valores):
+                self.tabla.setItem(fila, columna, QTableWidgetItem(str(valor)))
 
-		self.buscar_input.textChanged.connect(self.filtrar_tabla)
-		self.btn_agregar.clicked.connect(self.agregar_seleccion)
-		self.btn_cancelar.clicked.connect(self.reject)
-		self.tabla.doubleClicked.connect(self.agregar_seleccion)
+        self.buscar_input.textChanged.connect(self.filtrar_tabla)
+        self.btn_agregar.clicked.connect(self.agregar_seleccion)
+        self.btn_cancelar.clicked.connect(self.reject)
+        self.tabla.doubleClicked.connect(self.agregar_seleccion)
 
-	def filtrar_tabla(self, texto):
-		texto = texto.casefold()
-		for fila in range(self.tabla.rowCount()):
-			coincide = any(
-				texto in self.tabla.item(fila, columna).text().casefold()
-				for columna in range(self.tabla.columnCount())
-			)
-			self.tabla.setRowHidden(fila, not coincide)
+    def filtrar_tabla(self, texto):
+        texto = texto.casefold()
+        for fila in range(self.tabla.rowCount()):
+            coincide = any(
+                texto in self.tabla.item(fila, columna).text().casefold()
+                for columna in range(self.tabla.columnCount())
+            )
+            self.tabla.setRowHidden(fila, not coincide)
 
-	def agregar_seleccion(self):
-		fila = self.tabla.currentRow()
-		if fila < 0:
-			return
-		self.producto_seleccionado = (
-			self.tabla.item(fila, 0).text(),
-			self.tabla.item(fila, 1).text(),
-			float(self.tabla.item(fila, 2).text()),
-		)
-		self.accept()
+    def agregar_seleccion(self):
+        fila = self.tabla.currentRow()
+        if fila < 0:
+            return
+        self.producto_seleccionado = (
+            self.tabla.item(fila, 0).text(),
+            self.tabla.item(fila, 1).text(),
+            float(self.tabla.item(fila, 2).text()),
+        )
+        self.accept()
 
 
 class DialogoCliente(QDialog):
-	def __init__(self, parent=None):
-		super().__init__(parent)
-		self.setWindowTitle("Datos del Cliente (Opcional)")
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Datos del Cliente (Opcional)")
 
-		layout = QVBoxLayout(self)
-		formulario = QFormLayout()
-		self.nombre_input = QLineEdit()
-		self.telefono_input = QLineEdit()
-		self.fecha_input = QLineEdit()
-		self.direccion_input = QLineEdit()
-		campos = (
-			(self.nombre_input, "Nombre"),
-			(self.telefono_input, "Teléfono"),
-			(self.fecha_input, "Fecha del Evento"),
-			(self.direccion_input, "Dirección"),
-		)
-		for campo, etiqueta in campos:
-			campo.setPlaceholderText("Opcional")
-			formulario.addRow(f"{etiqueta}:", campo)
-		layout.addLayout(formulario)
+        layout = QVBoxLayout(self)
+        formulario = QFormLayout()
+        self.nombre_input = QLineEdit()
+        self.telefono_input = QLineEdit()
+        self.fecha_input = QLineEdit()
+        self.direccion_input = QLineEdit()
+        campos = (
+            (self.nombre_input, "Nombre"),
+            (self.telefono_input, "Teléfono"),
+            (self.fecha_input, "Fecha del Evento"),
+            (self.direccion_input, "Dirección"),
+        )
+        for campo, etiqueta in campos:
+            campo.setPlaceholderText("Opcional")
+            formulario.addRow(f"{etiqueta}:", campo)
+        layout.addLayout(formulario)
 
-		botones = QHBoxLayout()
-		btn_generar = QPushButton("Generar PDF")
-		btn_cancelar = QPushButton("Cancelar")
-		botones.addStretch()
-		botones.addWidget(btn_generar)
-		botones.addWidget(btn_cancelar)
-		layout.addLayout(botones)
+        botones = QHBoxLayout()
+        btn_generar = QPushButton("Generar PDF")
+        btn_cancelar = QPushButton("Cancelar")
+        botones.addStretch()
+        botones.addWidget(btn_generar)
+        botones.addWidget(btn_cancelar)
+        layout.addLayout(botones)
 
-		btn_generar.clicked.connect(self.accept)
-		btn_cancelar.clicked.connect(self.reject)
+        btn_generar.clicked.connect(self.accept)
+        btn_cancelar.clicked.connect(self.reject)
 
-	def obtener_datos(self) -> dict:
-		return {
-			"nombre": self.nombre_input.text(),
-			"telefono": self.telefono_input.text(),
-			"fecha": self.fecha_input.text(),
-			"direccion": self.direccion_input.text(),
-		}
+    def obtener_datos(self) -> dict:
+        return {
+            "nombre": self.nombre_input.text(),
+            "telefono": self.telefono_input.text(),
+            "fecha": self.fecha_input.text(),
+            "direccion": self.direccion_input.text(),
+        }
 
 
 class DialogoPistaMixta(QDialog):
-	def __init__(self, filas, columnas, parent=None):
-		super().__init__(parent)
-		self.setWindowTitle("Diseñador de Pista Mixta")
-		self.max_iluminados = 18
-		self.usados_iluminados = 0
-		self.total_madera = filas * columnas
+    def __init__(self, filas, columnas, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Diseñador de Pista Mixta")
+        self.max_iluminados = 18
+        self.usados_iluminados = 0
+        self.total_madera = filas * columnas
 
-		layout = QVBoxLayout(self)
-		herramientas = QHBoxLayout()
-		self.radio_madera = QRadioButton("Madera")
-		self.radio_iluminada = QRadioButton("Iluminada")
-		self.radio_madera.setChecked(True)
-		self.lbl_contador = QLabel("Iluminados: 0 / 18")
-		self.lbl_contador.setStyleSheet("font-weight: bold; color: #176b3a;")
-		herramientas.addWidget(self.radio_madera)
-		herramientas.addWidget(self.radio_iluminada)
-		herramientas.addStretch()
-		herramientas.addWidget(self.lbl_contador)
-		layout.addLayout(herramientas)
+        layout = QVBoxLayout(self)
+        herramientas = QHBoxLayout()
+        self.radio_madera = QRadioButton("Madera")
+        self.radio_iluminada = QRadioButton("Iluminada")
+        self.radio_madera.setChecked(True)
+        self.lbl_contador = QLabel("Iluminados: 0 / 18")
+        self.lbl_contador.setStyleSheet("font-weight: bold; color: #176b3a;")
+        herramientas.addWidget(self.radio_madera)
+        herramientas.addWidget(self.radio_iluminada)
+        herramientas.addStretch()
+        herramientas.addWidget(self.lbl_contador)
+        layout.addLayout(herramientas)
 
-		grid = QGridLayout()
-		grid.setSpacing(2)
-		self.botones = []
-		for r in range(filas):
-			fila_botones = []
-			for c in range(columnas):
-				btn = QPushButton("")
-				btn.setFixedSize(40, 40)
-				btn.tipo = "madera"
-				btn.setStyleSheet(
-					"background-color: #8B5A2B; border: 1px solid black;"
-				)
-				btn.clicked.connect(
-					lambda checked=False, b=btn: self.pintar_modulo(b)
-				)
-				grid.addWidget(btn, r, c)
-				fila_botones.append(btn)
-			self.botones.append(fila_botones)
-		layout.addLayout(grid)
+        grid = QGridLayout()
+        grid.setSpacing(2)
+        self.botones = []
+        for r in range(filas):
+            fila_botones = []
+            for c in range(columnas):
+                btn = QPushButton("")
+                btn.setFixedSize(40, 40)
+                btn.tipo = "madera"
+                btn.setStyleSheet(
+                    "background-color: #8B5A2B; border: 1px solid black;"
+                )
+                btn.clicked.connect(
+                    lambda checked=False, b=btn: self.pintar_modulo(b)
+                )
+                grid.addWidget(btn, r, c)
+                fila_botones.append(btn)
+            self.botones.append(fila_botones)
+        layout.addLayout(grid)
 
-		btn_confirmar = QPushButton("Confirmar Diseño")
-		btn_confirmar.clicked.connect(self.accept)
-		layout.addWidget(btn_confirmar)
+        btn_confirmar = QPushButton("Confirmar Diseño")
+        btn_confirmar.clicked.connect(self.accept)
+        layout.addWidget(btn_confirmar)
 
-	def pintar_modulo(self, btn):
-		if self.radio_iluminada.isChecked() and btn.tipo == "madera":
-			if self.usados_iluminados >= self.max_iluminados:
-				return
-			btn.tipo = "iluminada"
-			btn.setStyleSheet(
-				"background-color: #E0FFFF; border: 2px solid cyan;"
-			)
-			self.usados_iluminados += 1
-			self.total_madera -= 1
-		elif self.radio_madera.isChecked() and btn.tipo == "iluminada":
-			btn.tipo = "madera"
-			btn.setStyleSheet(
-				"background-color: #8B5A2B; border: 1px solid black;"
-			)
-			self.usados_iluminados -= 1
-			self.total_madera += 1
+    def pintar_modulo(self, btn):
+        if self.radio_iluminada.isChecked() and btn.tipo == "madera":
+            if self.usados_iluminados >= self.max_iluminados:
+                return
+            btn.tipo = "iluminada"
+            btn.setStyleSheet(
+                "background-color: #E0FFFF; border: 2px solid cyan;"
+            )
+            self.usados_iluminados += 1
+            self.total_madera -= 1
+        elif self.radio_madera.isChecked() and btn.tipo == "iluminada":
+            btn.tipo = "madera"
+            btn.setStyleSheet(
+                "background-color: #8B5A2B; border: 1px solid black;"
+            )
+            self.usados_iluminados -= 1
+            self.total_madera += 1
 
-		self.lbl_contador.setText(
-			f"Iluminados: {self.usados_iluminados} / 18"
-		)
+        self.lbl_contador.setText(
+            f"Iluminados: {self.usados_iluminados} / 18"
+        )
 
 
 class DialogoGestorInventario(QDialog):
-	def __init__(self, parent=None):
-		super().__init__(parent)
-		self.setWindowTitle("Gestor de Inventario")
-		self.setFixedSize(800, 600)
-		self.gestor_bd = database.GestorBD()
-		self.id_actual = None
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Gestor de Inventario")
+        self.setFixedSize(800, 600)
+        self.gestor_bd = database.GestorBD()
+        self.id_actual = None
 
-		layout = QVBoxLayout(self)
-		self.tabla_inventario = QTableWidget(0, 6)
-		self.tabla_inventario.setHorizontalHeaderLabels(
-			["ID", "Categoría", "Artículo", "Costo Prov.", "Precio Público", "Unidad"]
-		)
-		self.tabla_inventario.setColumnHidden(0, True)
-		self.tabla_inventario.setEditTriggers(QAbstractItemView.NoEditTriggers)
-		self.tabla_inventario.setSelectionBehavior(QAbstractItemView.SelectRows)
-		self.tabla_inventario.horizontalHeader().setSectionResizeMode(
-			1, QHeaderView.ResizeToContents
-		)
-		self.tabla_inventario.horizontalHeader().setSectionResizeMode(
-			2, QHeaderView.Stretch
-		)
-		layout.addWidget(self.tabla_inventario)
+        layout = QVBoxLayout(self)
+        self.tabla_inventario = QTableWidget(0, 6)
+        self.tabla_inventario.setHorizontalHeaderLabels(
+            ["ID", "Categoría", "Artículo", "Costo Prov.", "Precio Público", "Unidad"]
+        )
+        self.tabla_inventario.setColumnHidden(0, True)
+        self.tabla_inventario.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.tabla_inventario.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.tabla_inventario.horizontalHeader().setSectionResizeMode(
+            1, QHeaderView.ResizeToContents
+        )
+        self.tabla_inventario.horizontalHeader().setSectionResizeMode(
+            2, QHeaderView.Stretch
+        )
+        layout.addWidget(self.tabla_inventario)
 
-		grupo = QGroupBox("Datos del Artículo")
-		formulario = QFormLayout(grupo)
-		self.cmb_categoria = QComboBox()
-		self.cmb_categoria.addItems(
-			[
-				"SILLAS",
-				"MESAS",
-				"SALAS",
-				"MANTELERIA",
-				"LOSA",
-				"PISTAS",
-				"DECO",
-				"SERVICIOS",
-				"CARPAS",
-			]
-		)
-		self.txt_articulo = QLineEdit()
-		self.spn_prov = QDoubleSpinBox()
-		self.spn_pub = QDoubleSpinBox()
-		for spin in (self.spn_prov, self.spn_pub):
-			spin.setRange(0, 999999)
-			spin.setPrefix("$ ")
-			spin.setDecimals(2)
-		self.cmb_unidad = QComboBox()
-		self.cmb_unidad.addItems(["Pieza", "Paquete", "M2"])
-		formulario.addRow("Categoría:", self.cmb_categoria)
-		formulario.addRow("Artículo:", self.txt_articulo)
-		formulario.addRow("Costo Prov.:", self.spn_prov)
-		formulario.addRow("Precio Público:", self.spn_pub)
-		formulario.addRow("Unidad:", self.cmb_unidad)
-		layout.addWidget(grupo)
+        grupo = QGroupBox("Datos del Artículo")
+        formulario = QFormLayout(grupo)
+        self.cmb_categoria = QComboBox()
+        self.cmb_categoria.addItems(
+            [
+                "SILLAS",
+                "MESAS",
+                "SALAS",
+                "MANTELERIA",
+                "LOSA",
+                "PISTAS",
+                "DECO",
+                "SERVICIOS",
+                "CARPAS",
+            ]
+        )
+        self.txt_articulo = QLineEdit()
+        self.spn_prov = QDoubleSpinBox()
+        self.spn_pub = QDoubleSpinBox()
+        for spin in (self.spn_prov, self.spn_pub):
+            spin.setRange(0, 999999)
+            spin.setPrefix("$ ")
+            spin.setDecimals(2)
+        self.cmb_unidad = QComboBox()
+        self.cmb_unidad.addItems(["Pieza", "Paquete", "M2"])
+        self.lbl_descripcion = QLabel(
+            "Descripción para PDF (Comodines: {ancho}, {largo}, {sillas}, "
+            "{mod_madera}, {mod_ilum}):"
+        )
+        self.txt_descripcion = QTextEdit()
+        self.txt_descripcion.setFixedHeight(80)
+        formulario.addRow("Categoría:", self.cmb_categoria)
+        formulario.addRow("Artículo:", self.txt_articulo)
+        formulario.addRow("Costo Prov.:", self.spn_prov)
+        formulario.addRow("Precio Público:", self.spn_pub)
+        formulario.addRow("Unidad:", self.cmb_unidad)
+        formulario.addRow(self.lbl_descripcion)
+        formulario.addRow(self.txt_descripcion)
+        layout.addWidget(grupo)
 
-		botones = QHBoxLayout()
-		self.btn_limpiar_inventario = QPushButton("Limpiar Campos")
-		self.btn_guardar_inventario = QPushButton("Guardar / Actualizar Artículo")
-		self.btn_eliminar_inventario = QPushButton("Eliminar Artículo")
-		self.btn_eliminar_inventario.setStyleSheet(
-			"QPushButton { color: white; background-color: #b3261e; }"
-		)
-		botones.addWidget(self.btn_limpiar_inventario)
-		botones.addWidget(self.btn_guardar_inventario)
-		botones.addWidget(self.btn_eliminar_inventario)
-		layout.addLayout(botones)
+        botones = QHBoxLayout()
+        self.btn_limpiar_inventario = QPushButton("Limpiar Campos")
+        self.btn_guardar_inventario = QPushButton("Guardar / Actualizar Artículo")
+        self.btn_eliminar_inventario = QPushButton("Eliminar Artículo")
+        self.btn_eliminar_inventario.setStyleSheet(
+            "QPushButton { color: white; background-color: #b3261e; }"
+        )
+        botones.addWidget(self.btn_limpiar_inventario)
+        botones.addWidget(self.btn_guardar_inventario)
+        botones.addWidget(self.btn_eliminar_inventario)
+        layout.addLayout(botones)
 
-		self.tabla_inventario.itemSelectionChanged.connect(
-			self.cargar_fila_al_formulario
-		)
-		self.btn_limpiar_inventario.clicked.connect(self.limpiar_campos)
-		self.btn_guardar_inventario.clicked.connect(self.guardar_articulo)
-		self.btn_eliminar_inventario.clicked.connect(self.eliminar_articulo)
-		self.cargar_datos()
+        self.tabla_inventario.itemSelectionChanged.connect(
+            self.cargar_fila_al_formulario
+        )
+        self.btn_limpiar_inventario.clicked.connect(self.limpiar_campos)
+        self.btn_guardar_inventario.clicked.connect(self.guardar_articulo)
+        self.btn_eliminar_inventario.clicked.connect(self.eliminar_articulo)
+        self.cargar_datos()
 
-	def cargar_datos(self):
-		productos = self.gestor_bd.obtener_todos_productos()
-		self.tabla_inventario.setRowCount(0)
-		for fila, producto in enumerate(productos):
-			self.tabla_inventario.insertRow(fila)
-			valores = (
-				producto["id"],
-				producto["categoria"],
-				producto["articulo"],
-				producto["precio_proveedor"],
-				producto["precio_publico"],
-				producto["unidad_medida"],
-			)
-			for columna, valor in enumerate(valores):
-				self.tabla_inventario.setItem(
-					fila, columna, QTableWidgetItem(str(valor))
-				)
-		self.tabla_inventario.clearSelection()
+    def cargar_datos(self):
+        productos = self.gestor_bd.obtener_todos_productos()
+        self.tabla_inventario.setRowCount(0)
+        for fila, producto in enumerate(productos):
+            self.tabla_inventario.insertRow(fila)
+            valores = (
+                producto["id"],
+                producto["categoria"],
+                producto["articulo"],
+                producto["precio_proveedor"],
+                producto["precio_publico"],
+                producto["unidad_medida"],
+            )
+            for columna, valor in enumerate(valores):
+                self.tabla_inventario.setItem(
+                    fila, columna, QTableWidgetItem(str(valor))
+                )
+        self.tabla_inventario.clearSelection()
 
-	def cargar_fila_al_formulario(self):
-		fila = self.tabla_inventario.currentRow()
-		if fila < 0:
-			return
-		try:
-			self.id_actual = int(self.tabla_inventario.item(fila, 0).text())
-			self.cmb_categoria.setCurrentText(self.tabla_inventario.item(fila, 1).text())
-			self.txt_articulo.setText(self.tabla_inventario.item(fila, 2).text())
-			self.spn_prov.setValue(float(self.tabla_inventario.item(fila, 3).text()))
-			self.spn_pub.setValue(float(self.tabla_inventario.item(fila, 4).text()))
-			self.cmb_unidad.setCurrentText(self.tabla_inventario.item(fila, 5).text())
-		except (AttributeError, TypeError, ValueError):
-			self.limpiar_campos()
+    def cargar_fila_al_formulario(self):
+        fila = self.tabla_inventario.currentRow()
+        if fila < 0:
+            return
+        try:
+            self.id_actual = int(self.tabla_inventario.item(fila, 0).text())
+            self.cmb_categoria.setCurrentText(self.tabla_inventario.item(fila, 1).text())
+            self.txt_articulo.setText(self.tabla_inventario.item(fila, 2).text())
+            self.spn_prov.setValue(float(self.tabla_inventario.item(fila, 3).text()))
+            self.spn_pub.setValue(float(self.tabla_inventario.item(fila, 4).text()))
+            self.cmb_unidad.setCurrentText(self.tabla_inventario.item(fila, 5).text())
+            articulo = self.tabla_inventario.item(fila, 2).text()
+            self.txt_descripcion.setPlainText(
+                self.gestor_bd.obtener_descripcion(articulo)
+            )
+        except (AttributeError, TypeError, ValueError):
+            self.limpiar_campos()
 
-	def limpiar_campos(self):
-		self.id_actual = None
-		self.tabla_inventario.clearSelection()
-		self.cmb_categoria.setCurrentIndex(0)
-		self.txt_articulo.clear()
-		self.spn_prov.setValue(0)
-		self.spn_pub.setValue(0)
-		self.cmb_unidad.setCurrentIndex(0)
+    def limpiar_campos(self):
+        self.id_actual = None
+        self.tabla_inventario.clearSelection()
+        self.cmb_categoria.setCurrentIndex(0)
+        self.txt_articulo.clear()
+        self.spn_prov.setValue(0)
+        self.spn_pub.setValue(0)
+        self.cmb_unidad.setCurrentIndex(0)
+        self.txt_descripcion.clear()
 
-	def guardar_articulo(self):
-		articulo = self.txt_articulo.text().strip()
-		if not articulo:
-			QMessageBox.warning(self, "Datos incompletos", "Escribe el nombre del artículo.")
-			return
+    def guardar_articulo(self):
+        articulo = self.txt_articulo.text().strip()
+        if not articulo:
+            QMessageBox.warning(self, "Datos incompletos", "Escribe el nombre del artículo.")
+            return
 
-		valores = (
-			self.cmb_categoria.currentText(),
-			articulo,
-			self.spn_prov.value(),
-			self.spn_pub.value(),
-			self.cmb_unidad.currentText(),
-		)
-		if self.id_actual is None:
-			self.gestor_bd.insertar_producto(*valores)
-		else:
-			self.gestor_bd.actualizar_producto(self.id_actual, *valores)
-		self.cargar_datos()
-		self.limpiar_campos()
+        valores = (
+            self.cmb_categoria.currentText(),
+            articulo,
+            self.spn_prov.value(),
+            self.spn_pub.value(),
+            self.cmb_unidad.currentText(),
+            self.txt_descripcion.toPlainText(),
+        )
+        if self.id_actual is None:
+            self.gestor_bd.insertar_producto(*valores)
+        else:
+            self.gestor_bd.actualizar_producto(self.id_actual, *valores)
+        self.cargar_datos()
+        self.limpiar_campos()
 
-	def eliminar_articulo(self):
-		if self.id_actual is None:
-			QMessageBox.warning(self, "Sin selección", "Selecciona un artículo para eliminar.")
-			return
-		respuesta = QMessageBox.question(
-			self,
-			"Confirmar eliminación",
-			"¿Deseas eliminar el artículo seleccionado?",
-			QMessageBox.Yes | QMessageBox.No,
-			QMessageBox.No,
-		)
-		if respuesta == QMessageBox.Yes:
-			self.gestor_bd.eliminar_producto(self.id_actual)
-			self.cargar_datos()
-			self.limpiar_campos()
+    def eliminar_articulo(self):
+        if self.id_actual is None:
+            QMessageBox.warning(self, "Sin selección", "Selecciona un artículo para eliminar.")
+            return
+        respuesta = QMessageBox.question(
+            self,
+            "Confirmar eliminación",
+            "¿Deseas eliminar el artículo seleccionado?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if respuesta == QMessageBox.Yes:
+            self.gestor_bd.eliminar_producto(self.id_actual)
+            self.cargar_datos()
+            self.limpiar_campos()
 
 
 class DelegadoEdicion(QStyledItemDelegate):
-	def __init__(self, parent=None):
-		super().__init__(parent)
+    def __init__(self, parent=None):
+        super().__init__(parent)
 
-	def setModelData(self, editor, model, index):
-		self.parent().guardar_estado()
-		super().setModelData(editor, model, index)
+    def setModelData(self, editor, model, index):
+        self.parent().guardar_estado()
+        super().setModelData(editor, model, index)
 
 
 class VentanaPrincipal(QMainWindow):
-	def __init__(self):
-		super().__init__()
-		self.setWindowTitle("Cotizador Interno - Alquiladora LIDER")
-		self.resize(1200, 800)
-		self.historial_estados = []
-		self.memoria_mixta_madera = None
-		self.memoria_mixta_ilum = None
-		self.gestor_bd = database.GestorBD()
-		self._crear_interfaz()
-		self._conectar_eventos()
-		self.actualizar_sugerencias()
-		self.alternar_precio_decoracion()
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Cotizador Interno - Alquiladora LIDER")
+        self.resize(1200, 800)
+        self.historial_estados = []
+        self.memoria_mixta_madera = None
+        self.memoria_mixta_ilum = None
+        self.gestor_bd = database.GestorBD()
+        self._crear_interfaz()
+        self._conectar_eventos()
+        self.actualizar_sugerencias()
+        self.alternar_precio_decoracion()
 
-	def _crear_interfaz(self):
-		central = QWidget()
-		self.setCentralWidget(central)
+    def _crear_interfaz(self):
+        central = QWidget()
+        self.setCentralWidget(central)
 
-		layout_principal = QHBoxLayout(central)
-		layout_principal.setContentsMargins(16, 16, 16, 16)
-		layout_principal.setSpacing(16)
-		layout_principal.addWidget(self._crear_panel_izquierdo())
-		layout_principal.addLayout(self._crear_panel_derecho(), 1)
+        layout_principal = QHBoxLayout(central)
+        layout_principal.setContentsMargins(16, 16, 16, 16)
+        layout_principal.setSpacing(16)
+        layout_principal.addWidget(self._crear_panel_izquierdo())
+        layout_principal.addLayout(self._crear_panel_derecho(), 1)
 
-	def _crear_panel_izquierdo(self):
-		panel = QGroupBox("Dimensionamiento Dinámico")
-		panel.setFixedWidth(350)
-		layout = QVBoxLayout(panel)
+    def _crear_panel_izquierdo(self):
+        panel = QGroupBox("Dimensionamiento Dinámico")
+        panel.setFixedWidth(350)
+        layout = QVBoxLayout(panel)
 
-		formulario = QFormLayout()
-		self.spin_invitados = QSpinBox()
-		self.spin_invitados.setRange(0, 5000)
-		self.spin_invitados.setSuffix(" invitados")
+        formulario = QFormLayout()
+        self.spin_invitados = QSpinBox()
+        self.spin_invitados.setRange(0, 5000)
+        self.spin_invitados.setSuffix(" invitados")
 
-		self.spin_factor = QSpinBox()
-		self.spin_factor.setRange(0, 500)
-		self.spin_factor.setValue(70)
-		self.spin_factor.setSuffix(" m² extra")
+        self.spin_factor = QSpinBox()
+        self.spin_factor.setRange(0, 500)
+        self.spin_factor.setValue(70)
+        self.spin_factor.setSuffix(" m² extra")
 
-		self.combo_estilo = QComboBox()
-		self.combo_estilo.addItems(["Sencilla", "Decorada", "Plisada"])
+        self.combo_estilo = QComboBox()
+        self.combo_estilo.addItems(["Sencilla", "Decorada", "Plisada"])
 
-		self.spn_precio_base_carpa = QDoubleSpinBox()
-		self.spn_precio_base_carpa.setRange(0, 1000)
-		self.spn_precio_base_carpa.setPrefix("$ ")
-		self.spn_precio_base_carpa.setValue(32.00)
+        self.spn_precio_base_carpa = QDoubleSpinBox()
+        self.spn_precio_base_carpa.setRange(0, 1000)
+        self.spn_precio_base_carpa.setPrefix("$ ")
+        self.spn_precio_base_carpa.setValue(32.00)
 
-		self.spn_precio_decoracion = QDoubleSpinBox()
-		self.spn_precio_decoracion.setRange(0, 1000)
-		self.spn_precio_decoracion.setPrefix("$ ")
-		self.spn_precio_decoracion.setValue(15.00)
+        self.spn_precio_decoracion = QDoubleSpinBox()
+        self.spn_precio_decoracion.setRange(0, 1000)
+        self.spn_precio_decoracion.setPrefix("$ ")
+        self.spn_precio_decoracion.setValue(15.00)
 
-		formulario.addRow("Invitados:", self.spin_invitados)
-		formulario.addRow("Factor de Espacio extra:", self.spin_factor)
-		formulario.addRow("Estilo:", self.combo_estilo)
-		formulario.addRow("Precio Base (m2):", self.spn_precio_base_carpa)
-		formulario.addRow("Costo Decoración (m2):", self.spn_precio_decoracion)
-		layout.addLayout(formulario)
+        formulario.addRow("Invitados:", self.spin_invitados)
+        formulario.addRow("Factor de Espacio extra:", self.spin_factor)
+        formulario.addRow("Estilo:", self.combo_estilo)
+        formulario.addRow("Precio Base (m2):", self.spn_precio_base_carpa)
+        formulario.addRow("Costo Decoración (m2):", self.spn_precio_decoracion)
+        layout.addLayout(formulario)
 
-		opciones_carpa = QGroupBox("Opciones de Carpa")
-		grid = QGridLayout(opciones_carpa)
-		self.lbl_minimo_m2 = QLabel("Mínimo: 0 m2")
-		self.lbl_minimo_m2.setAlignment(Qt.AlignRight)
-		grid.addWidget(self.lbl_minimo_m2, 0, 0, 1, 3)
+        opciones_carpa = QGroupBox("Opciones de Carpa")
+        grid = QGridLayout(opciones_carpa)
+        self.lbl_minimo_m2 = QLabel("Mínimo: 0 m2")
+        self.lbl_minimo_m2.setAlignment(Qt.AlignRight)
+        grid.addWidget(self.lbl_minimo_m2, 0, 0, 1, 3)
 
-		self.radios_ancho = []
-		self.spins_largo = []
-		self.lbls_area = []
-		self.anchos_carpa = [6, 8, 10, 12, 15]
-		for fila, ancho in enumerate(self.anchos_carpa, start=1):
-			radio = QRadioButton(f"Ancho {ancho}m")
-			radio.toggled.connect(self.activar_boton_sugerencias)
-			if fila == 1:
-				radio.setChecked(True)
-			spin_largo = QSpinBox()
-			spin_largo.setRange(0, 500)
-			spin_largo.setSingleStep(5)
-			spin_largo.setPrefix("Largo: ")
-			spin_largo.setSuffix("m")
-			spin_largo.valueChanged.connect(self.recalcular_area_manual)
-			spin_largo.valueChanged.connect(self.activar_boton_sugerencias)
-			lbl_area = QLabel(" = 0 m2")
-			self.radios_ancho.append(radio)
-			self.spins_largo.append(spin_largo)
-			self.lbls_area.append(lbl_area)
-			grid.addWidget(radio, fila, 0)
-			grid.addWidget(spin_largo, fila, 1)
-			grid.addWidget(lbl_area, fila, 2)
+        self.radios_ancho = []
+        self.spins_largo = []
+        self.lbls_area = []
+        self.anchos_carpa = [6, 8, 10, 12, 15]
+        for fila, ancho in enumerate(self.anchos_carpa, start=1):
+            radio = QRadioButton(f"Ancho {ancho}m")
+            radio.toggled.connect(self.activar_boton_sugerencias)
+            if fila == 1:
+                radio.setChecked(True)
+            spin_largo = QSpinBox()
+            spin_largo.setRange(0, 500)
+            spin_largo.setSingleStep(5)
+            spin_largo.setPrefix("Largo: ")
+            spin_largo.setSuffix("m")
+            spin_largo.valueChanged.connect(self.recalcular_area_manual)
+            spin_largo.valueChanged.connect(self.activar_boton_sugerencias)
+            lbl_area = QLabel(" = 0 m2")
+            self.radios_ancho.append(radio)
+            self.spins_largo.append(spin_largo)
+            self.lbls_area.append(lbl_area)
+            grid.addWidget(radio, fila, 0)
+            grid.addWidget(spin_largo, fila, 1)
+            grid.addWidget(lbl_area, fila, 2)
 
-		self.chk_carpa_libre = QCheckBox("Medida Libre (Ignorar invitados)")
-		self.spn_largo_libre = QSpinBox()
-		self.spn_largo_libre.setRange(5, 200)
-		self.spn_largo_libre.setSingleStep(5)
-		self.spn_largo_libre.setSuffix(" m")
-		self.spn_largo_libre.setEnabled(False)
-		fila_libre = len(self.anchos_carpa) + 1
-		grid.addWidget(self.chk_carpa_libre, fila_libre, 0, 1, 2)
-		grid.addWidget(self.spn_largo_libre, fila_libre, 2)
+        self.chk_carpa_libre = QCheckBox("Medida Libre (Ignorar invitados)")
+        self.spn_largo_libre = QSpinBox()
+        self.spn_largo_libre.setRange(5, 200)
+        self.spn_largo_libre.setSingleStep(5)
+        self.spn_largo_libre.setSuffix(" m")
+        self.spn_largo_libre.setEnabled(False)
+        fila_libre = len(self.anchos_carpa) + 1
+        grid.addWidget(self.chk_carpa_libre, fila_libre, 0, 1, 2)
+        grid.addWidget(self.spn_largo_libre, fila_libre, 2)
 
-		layout.addWidget(opciones_carpa)
+        layout.addWidget(opciones_carpa)
 
-		resultados = QFrame()
-		resultados.setFrameShape(QFrame.StyledPanel)
-		resultados.setStyleSheet(
-			"QFrame { background-color: #eef6f0; border: 1px solid #a9c9b0; "
-			"border-radius: 6px; }"
-		)
-		resultados_layout = QVBoxLayout(resultados)
-		fuente_resultados = QFont()
-		fuente_resultados.setBold(True)
-		fuente_resultados.setPointSize(11)
+        resultados = QFrame()
+        resultados.setFrameShape(QFrame.StyledPanel)
+        resultados.setStyleSheet(
+            "QFrame { background-color: #eef6f0; border: 1px solid #a9c9b0; "
+            "border-radius: 6px; }"
+        )
+        resultados_layout = QVBoxLayout(resultados)
+        fuente_resultados = QFont()
+        fuente_resultados.setBold(True)
+        fuente_resultados.setPointSize(11)
 
-		self.chk_carpa = QCheckBox("Incluir Sugerencia de Carpa")
-		self.chk_carpa.setChecked(True)
-		self.lbl_carpa = QLabel("Carpa Sugerida: --")
-		self.lbl_carpa.setFont(fuente_resultados)
-		resultados_layout.addWidget(self.chk_carpa)
-		resultados_layout.addWidget(self.lbl_carpa)
+        self.chk_carpa = QCheckBox("Incluir Sugerencia de Carpa")
+        self.chk_carpa.setChecked(True)
+        self.lbl_carpa = QLabel("Carpa Sugerida: --")
+        self.lbl_carpa.setFont(fuente_resultados)
+        resultados_layout.addWidget(self.chk_carpa)
+        resultados_layout.addWidget(self.lbl_carpa)
 
-		self.chk_mesas = QCheckBox("Incluir Sugerencia de Mesas")
-		self.chk_mesas.setChecked(True)
-		self.lbl_mesas = QLabel("Mesas Base: --")
-		self.lbl_mesas.setFont(fuente_resultados)
-		resultados_layout.addWidget(self.chk_mesas)
-		self.combo_paquete_mesas = QComboBox()
-		self.combo_paquete_mesas.addItem("Mesa c/10 Plegables", 140.0)
-		self.combo_paquete_mesas.addItem("Mesa c/10 Plegables Vestidas", 250.0)
-		self.combo_paquete_mesas.addItem("Mesa c/10 Tiffany", 380.0)
-		resultados_layout.addWidget(self.combo_paquete_mesas)
-		self.chk_tiffany_12 = QCheckBox("Montaje a 12 sillas (Excepción)")
-		self.chk_tiffany_12.setVisible(False)
-		resultados_layout.addWidget(self.chk_tiffany_12)
+        self.chk_mesas = QCheckBox("Incluir Sugerencia de Mesas")
+        self.chk_mesas.setChecked(True)
+        self.lbl_mesas = QLabel("Mesas Base: --")
+        self.lbl_mesas.setFont(fuente_resultados)
+        resultados_layout.addWidget(self.chk_mesas)
+        self.combo_paquete_mesas = QComboBox()
+        self.combo_paquete_mesas.addItem("Mesa c/10 Plegables", 140.0)
+        self.combo_paquete_mesas.addItem("Mesa c/10 Plegables Vestidas", 250.0)
+        self.combo_paquete_mesas.addItem("Mesa c/10 Tiffany", 380.0)
+        resultados_layout.addWidget(self.combo_paquete_mesas)
+        self.chk_tiffany_12 = QCheckBox("Montaje a 12 sillas (Excepción)")
+        self.chk_tiffany_12.setVisible(False)
+        resultados_layout.addWidget(self.chk_tiffany_12)
 
-		self.chk_pista = QCheckBox("Incluir Sugerencia de Pista")
-		self.chk_pista.setChecked(True)
-		self.lbl_pista = QLabel("Pista Sugerida: --")
-		self.lbl_pista.setFont(fuente_resultados)
-		resultados_layout.addWidget(self.chk_pista)
-		self.combo_tipo_pista = QComboBox()
-		resultados_layout.addWidget(self.combo_tipo_pista)
-		self.chk_pista_libre = QCheckBox("Diseño Manual (Ignorar invitados)")
-		self.chk_pista_libre.setEnabled(False)
-		resultados_layout.addWidget(self.chk_pista_libre)
-		self.layout_modulos_pista = QHBoxLayout()
-		self.spn_pista_modulos_ancho = QSpinBox()
-		self.spn_pista_modulos_largo = QSpinBox()
-		for spin, prefijo in [
-			(self.spn_pista_modulos_ancho, "Ancho: "),
-			(self.spn_pista_modulos_largo, "Largo: "),
-		]:
-			spin.setRange(1, 50)
-			spin.setValue(4)
-			spin.setPrefix(prefijo)
-			spin.setSuffix(" mód.")
-			spin.setEnabled(False)
-			self.layout_modulos_pista.addWidget(spin)
-		self.lbl_pista_medidas = QLabel("Medida real: 5.00m x 5.00m")
-		self.lbl_pista_medidas.setVisible(False)
-		resultados_layout.addLayout(self.layout_modulos_pista)
-		resultados_layout.addWidget(self.lbl_pista_medidas)
-		self.btn_disenar_mixta = QPushButton("Diseñar Pista Mixta")
-		self.btn_disenar_mixta.setVisible(False)
-		resultados_layout.addWidget(self.btn_disenar_mixta)
+        self.chk_pista = QCheckBox("Incluir Sugerencia de Pista")
+        self.chk_pista.setChecked(True)
+        self.lbl_pista = QLabel("Pista Sugerida: --")
+        self.lbl_pista.setFont(fuente_resultados)
+        resultados_layout.addWidget(self.chk_pista)
+        self.combo_tipo_pista = QComboBox()
+        resultados_layout.addWidget(self.combo_tipo_pista)
+        self.chk_pista_libre = QCheckBox("Diseño Manual (Ignorar invitados)")
+        self.chk_pista_libre.setEnabled(False)
+        resultados_layout.addWidget(self.chk_pista_libre)
+        self.layout_modulos_pista = QHBoxLayout()
+        self.spn_pista_modulos_ancho = QSpinBox()
+        self.spn_pista_modulos_largo = QSpinBox()
+        for spin, prefijo in [
+            (self.spn_pista_modulos_ancho, "Ancho: "),
+            (self.spn_pista_modulos_largo, "Largo: "),
+        ]:
+            spin.setRange(1, 50)
+            spin.setValue(4)
+            spin.setPrefix(prefijo)
+            spin.setSuffix(" mód.")
+            spin.setEnabled(False)
+            self.layout_modulos_pista.addWidget(spin)
+        self.lbl_pista_medidas = QLabel("Medida real: 5.00m x 5.00m")
+        self.lbl_pista_medidas.setVisible(False)
+        resultados_layout.addLayout(self.layout_modulos_pista)
+        resultados_layout.addWidget(self.lbl_pista_medidas)
+        self.btn_disenar_mixta = QPushButton("Diseñar Pista Mixta")
+        self.btn_disenar_mixta.setVisible(False)
+        resultados_layout.addWidget(self.btn_disenar_mixta)
 
-		layout.addWidget(resultados)
-		layout.addStretch()
-		self.btn_inventario = QPushButton("⚙️ Gestor de Inventario")
-		layout.addWidget(self.btn_inventario)
-		self.aplicar_button = QPushButton("Aplicar Sugerencias al Carrito")
-		self.aplicar_button.setMinimumHeight(48)
-		layout.addWidget(self.aplicar_button)
+        layout.addWidget(resultados)
+        layout.addStretch()
+        self.btn_inventario = QPushButton("⚙️ Gestor de Inventario")
+        layout.addWidget(self.btn_inventario)
+        self.aplicar_button = QPushButton("Aplicar Sugerencias al Carrito")
+        self.aplicar_button.setMinimumHeight(48)
+        layout.addWidget(self.aplicar_button)
 
-		return panel
+        return panel
 
-	def _crear_panel_derecho(self):
-		layout = QVBoxLayout()
-		acciones = QHBoxLayout()
-		self.btn_agregar_manual = QPushButton("+ Agregar Artículo Manual")
-		self.btn_eliminar_fila = QPushButton("- Eliminar Fila Seleccionada")
-		self.btn_limpiar = QPushButton("🗑 Limpiar Cotización")
-		self.btn_deshacer = QPushButton("↩ Deshacer")
-		acciones.addWidget(self.btn_agregar_manual)
-		acciones.addWidget(self.btn_eliminar_fila)
-		acciones.addWidget(self.btn_limpiar)
-		acciones.addWidget(self.btn_deshacer)
-		acciones.addStretch()
-		layout.addLayout(acciones)
+    def _crear_panel_derecho(self):
+        layout = QVBoxLayout()
+        acciones = QHBoxLayout()
+        self.btn_agregar_manual = QPushButton("+ Agregar Artículo Manual")
+        self.btn_eliminar_fila = QPushButton("- Eliminar Fila Seleccionada")
+        self.btn_limpiar = QPushButton("🗑 Limpiar Cotización")
+        self.btn_deshacer = QPushButton("↩ Deshacer")
+        acciones.addWidget(self.btn_agregar_manual)
+        acciones.addWidget(self.btn_eliminar_fila)
+        acciones.addWidget(self.btn_limpiar)
+        acciones.addWidget(self.btn_deshacer)
+        acciones.addStretch()
+        layout.addLayout(acciones)
 
-		self.tabla = QTableWidget(0, 5)
-		self.carrito_table = self.tabla
-		self.tabla.setHorizontalHeaderLabels(
-			["Categoría", "Artículo", "Cantidad", "P. Unitario", "Subtotal"]
-		)
-		delegado = DelegadoEdicion(self)
-		self.tabla.setItemDelegateForColumn(2, delegado)
-		self.tabla.setItemDelegateForColumn(3, delegado)
-		encabezado = self.tabla.horizontalHeader()
-		encabezado.setSectionResizeMode(0, QHeaderView.ResizeToContents)
-		encabezado.setSectionResizeMode(1, QHeaderView.Stretch)
-		encabezado.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-		encabezado.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-		encabezado.setSectionResizeMode(4, QHeaderView.ResizeToContents)
-		layout.addWidget(self.tabla, 1)
+        self.tabla = QTableWidget(0, 5)
+        self.carrito_table = self.tabla
+        self.tabla.setHorizontalHeaderLabels(
+            ["Categoría", "Artículo", "Cantidad", "P. Unitario", "Subtotal"]
+        )
+        delegado = DelegadoEdicion(self)
+        self.tabla.setItemDelegateForColumn(2, delegado)
+        self.tabla.setItemDelegateForColumn(3, delegado)
+        encabezado = self.tabla.horizontalHeader()
+        encabezado.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        encabezado.setSectionResizeMode(1, QHeaderView.Stretch)
+        encabezado.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        encabezado.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        encabezado.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        layout.addWidget(self.tabla, 1)
 
-		self.lbl_total = QLabel("TOTAL: $0.00")
-		fuente_total = QFont()
-		fuente_total.setBold(True)
-		fuente_total.setPointSize(24)
-		self.lbl_total.setFont(fuente_total)
-		self.lbl_total.setStyleSheet("color: #176b3a;")
-		self.lbl_total.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-		barra_total = QHBoxLayout()
-		botones_pdf = QHBoxLayout()
-		self.btn_pdf_a = QPushButton("Generar PDF (Formato A - Integrado)")
-		self.btn_pdf_b = QPushButton("Generar PDF (Formato B - Anexo)")
-		botones_pdf.addWidget(self.btn_pdf_a)
-		botones_pdf.addWidget(self.btn_pdf_b)
-		barra_total.addLayout(botones_pdf)
-		barra_total.addStretch()
-		barra_total.addWidget(self.lbl_total)
-		layout.addLayout(barra_total)
-		return layout
+        self.lbl_total = QLabel("TOTAL: $0.00")
+        fuente_total = QFont()
+        fuente_total.setBold(True)
+        fuente_total.setPointSize(24)
+        self.lbl_total.setFont(fuente_total)
+        self.lbl_total.setStyleSheet("color: #176b3a;")
+        self.lbl_total.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        barra_total = QHBoxLayout()
+        botones_pdf = QHBoxLayout()
+        self.btn_pdf_a = QPushButton("Generar PDF (Formato A - Integrado)")
+        self.btn_pdf_b = QPushButton("Generar PDF (Formato B - Anexo)")
+        botones_pdf.addWidget(self.btn_pdf_a)
+        botones_pdf.addWidget(self.btn_pdf_b)
+        barra_total.addLayout(botones_pdf)
+        barra_total.addStretch()
+        barra_total.addWidget(self.lbl_total)
+        layout.addLayout(barra_total)
+        return layout
 
-	def _conectar_eventos(self):
-		self.spin_invitados.valueChanged.connect(self.actualizar_sugerencias)
-		self.spin_factor.valueChanged.connect(self.actualizar_sugerencias)
-		self.aplicar_button.clicked.connect(self.aplicar_al_carrito)
-		self.btn_agregar_manual.clicked.connect(self.abrir_buscador)
-		self.btn_eliminar_fila.clicked.connect(self.eliminar_fila)
-		self.btn_limpiar.clicked.connect(self.limpiar_cotizacion)
-		self.btn_deshacer.clicked.connect(self.deshacer)
-		self.btn_pdf_a.clicked.connect(lambda: self.generar_pdf(tipo="A"))
-		self.btn_pdf_b.clicked.connect(lambda: self.generar_pdf(tipo="B"))
-		self.btn_inventario.clicked.connect(self.abrir_gestor_inventario)
-		self.btn_disenar_mixta.clicked.connect(self.abrir_disenador_mixto)
-		self.tabla.cellChanged.connect(self.recalcular_fila)
-		for radio in self.radios_ancho:
-			radio.toggled.connect(self.actualizar_sugerencias)
-		for spin in [self.spin_invitados, self.spin_factor]:
-			spin.valueChanged.connect(self.activar_boton_sugerencias)
-		for combo in [
-			self.combo_estilo,
-			self.combo_paquete_mesas,
-			self.combo_tipo_pista,
-		]:
-			combo.currentIndexChanged.connect(self.activar_boton_sugerencias)
-		self.combo_paquete_mesas.currentTextChanged.connect(
-			self.alternar_opcion_tiffany
-		)
-		self.combo_tipo_pista.currentTextChanged.connect(
-			self.alternar_disenador_mixto
-		)
-		self.chk_pista.stateChanged.connect(self.alternar_disponibilidad_pista)
-		self.chk_pista_libre.stateChanged.connect(self.alternar_modo_pista)
-		self.chk_pista_libre.stateChanged.connect(self.activar_boton_sugerencias)
-		self.combo_estilo.currentIndexChanged.connect(self.alternar_precio_decoracion)
-		self.spn_precio_base_carpa.valueChanged.connect(
-			self.activar_boton_sugerencias
-		)
-		self.spn_precio_decoracion.valueChanged.connect(
-			self.activar_boton_sugerencias
-		)
-		for checkbox in [
-			self.chk_carpa,
-			self.chk_mesas,
-			self.chk_pista,
-			self.chk_tiffany_12,
-		]:
-			checkbox.stateChanged.connect(self.activar_boton_sugerencias)
-		self.chk_carpa_libre.stateChanged.connect(self.alternar_modo_carpa)
-		self.chk_carpa_libre.stateChanged.connect(self.activar_boton_sugerencias)
-		self.spn_largo_libre.valueChanged.connect(self.activar_boton_sugerencias)
-		self.spn_largo_libre.valueChanged.connect(self.actualizar_sugerencias)
-		for spin in [
-			self.spn_pista_modulos_ancho,
-			self.spn_pista_modulos_largo,
-		]:
-			spin.valueChanged.connect(self.actualizar_etiqueta_pista)
-			spin.valueChanged.connect(self.activar_boton_sugerencias)
+    def _conectar_eventos(self):
+        self.spin_invitados.valueChanged.connect(self.actualizar_sugerencias)
+        self.spin_factor.valueChanged.connect(self.actualizar_sugerencias)
+        self.aplicar_button.clicked.connect(self.aplicar_al_carrito)
+        self.btn_agregar_manual.clicked.connect(self.abrir_buscador)
+        self.btn_eliminar_fila.clicked.connect(self.eliminar_fila)
+        self.btn_limpiar.clicked.connect(self.limpiar_cotizacion)
+        self.btn_deshacer.clicked.connect(self.deshacer)
+        self.btn_pdf_a.clicked.connect(lambda: self.generar_pdf(tipo="A"))
+        self.btn_pdf_b.clicked.connect(lambda: self.generar_pdf(tipo="B"))
+        self.btn_inventario.clicked.connect(self.abrir_gestor_inventario)
+        self.btn_disenar_mixta.clicked.connect(self.abrir_disenador_mixto)
+        self.tabla.cellChanged.connect(self.recalcular_fila)
+        for radio in self.radios_ancho:
+            radio.toggled.connect(self.actualizar_sugerencias)
+        for spin in [self.spin_invitados, self.spin_factor]:
+            spin.valueChanged.connect(self.activar_boton_sugerencias)
+        for combo in [
+            self.combo_estilo,
+            self.combo_paquete_mesas,
+            self.combo_tipo_pista,
+        ]:
+            combo.currentIndexChanged.connect(self.activar_boton_sugerencias)
+        self.combo_paquete_mesas.currentTextChanged.connect(
+            self.alternar_opcion_tiffany
+        )
+        self.combo_tipo_pista.currentTextChanged.connect(
+            self.alternar_disenador_mixto
+        )
+        self.chk_pista.stateChanged.connect(self.alternar_disponibilidad_pista)
+        self.chk_pista_libre.stateChanged.connect(self.alternar_modo_pista)
+        self.chk_pista_libre.stateChanged.connect(self.activar_boton_sugerencias)
+        self.combo_estilo.currentIndexChanged.connect(self.alternar_precio_decoracion)
+        self.spn_precio_base_carpa.valueChanged.connect(
+            self.activar_boton_sugerencias
+        )
+        self.spn_precio_decoracion.valueChanged.connect(
+            self.activar_boton_sugerencias
+        )
+        for checkbox in [
+            self.chk_carpa,
+            self.chk_mesas,
+            self.chk_pista,
+            self.chk_tiffany_12,
+        ]:
+            checkbox.stateChanged.connect(self.activar_boton_sugerencias)
+        self.chk_carpa_libre.stateChanged.connect(self.alternar_modo_carpa)
+        self.chk_carpa_libre.stateChanged.connect(self.activar_boton_sugerencias)
+        self.spn_largo_libre.valueChanged.connect(self.activar_boton_sugerencias)
+        self.spn_largo_libre.valueChanged.connect(self.actualizar_sugerencias)
+        for spin in [
+            self.spn_pista_modulos_ancho,
+            self.spn_pista_modulos_largo,
+        ]:
+            spin.valueChanged.connect(self.actualizar_etiqueta_pista)
+            spin.valueChanged.connect(self.activar_boton_sugerencias)
 
-	def abrir_gestor_inventario(self):
-		dialogo = DialogoGestorInventario(self)
-		dialogo.exec()
+    def abrir_gestor_inventario(self):
+        dialogo = DialogoGestorInventario(self)
+        dialogo.exec()
 
-	def alternar_precio_decoracion(self):
-		es_sencilla = self.combo_estilo.currentText() == "Sencilla"
-		self.spn_precio_decoracion.setEnabled(not es_sencilla)
+    def alternar_precio_decoracion(self):
+        es_sencilla = self.combo_estilo.currentText() == "Sencilla"
+        self.spn_precio_decoracion.setEnabled(not es_sencilla)
 
-	def alternar_disponibilidad_pista(self, estado):
-		es_pista_seleccionada = bool(estado)
-		self.chk_pista_libre.setEnabled(es_pista_seleccionada)
-		if not es_pista_seleccionada:
-			self.chk_pista_libre.setChecked(False)
+    def alternar_disponibilidad_pista(self, estado):
+        es_pista_seleccionada = bool(estado)
+        self.chk_pista_libre.setEnabled(es_pista_seleccionada)
+        if not es_pista_seleccionada:
+            self.chk_pista_libre.setChecked(False)
 
-	def alternar_modo_pista(self):
-		es_manual = self.chk_pista_libre.isChecked()
-		for spin in [
-			self.spn_pista_modulos_ancho,
-			self.spn_pista_modulos_largo,
-		]:
-			spin.setEnabled(es_manual)
-		self.lbl_pista_medidas.setVisible(es_manual)
-		self.alternar_disenador_mixto()
-		if es_manual:
-			self.actualizar_etiqueta_pista()
+    def alternar_modo_pista(self):
+        es_manual = self.chk_pista_libre.isChecked()
+        for spin in [
+            self.spn_pista_modulos_ancho,
+            self.spn_pista_modulos_largo,
+        ]:
+            spin.setEnabled(es_manual)
+        self.lbl_pista_medidas.setVisible(es_manual)
+        self.alternar_disenador_mixto()
+        if es_manual:
+            self.actualizar_etiqueta_pista()
 
-	def alternar_disenador_mixto(self):
-		es_mixta = "Mixta" in self.combo_tipo_pista.currentText()
-		self.btn_disenar_mixta.setVisible(
-			es_mixta and self.chk_pista_libre.isChecked()
-		)
+    def alternar_disenador_mixto(self):
+        es_mixta = "Mixta" in self.combo_tipo_pista.currentText()
+        self.btn_disenar_mixta.setVisible(
+            es_mixta and self.chk_pista_libre.isChecked()
+        )
 
-	def abrir_disenador_mixto(self):
-		filas = self.spn_pista_modulos_ancho.value()
-		columnas = self.spn_pista_modulos_largo.value()
-		dialogo = DialogoPistaMixta(filas, columnas, self)
-		if dialogo.exec() != QDialog.Accepted:
-			return
-		self.memoria_mixta_madera = dialogo.total_madera
-		self.memoria_mixta_ilum = dialogo.usados_iluminados
-		self.actualizar_sugerencias()
-		self.combo_tipo_pista.setCurrentIndex(2)
+    def abrir_disenador_mixto(self):
+        filas = self.spn_pista_modulos_ancho.value()
+        columnas = self.spn_pista_modulos_largo.value()
+        dialogo = DialogoPistaMixta(filas, columnas, self)
+        if dialogo.exec() != QDialog.Accepted:
+            return
+        self.memoria_mixta_madera = dialogo.total_madera
+        self.memoria_mixta_ilum = dialogo.usados_iluminados
+        self.actualizar_sugerencias()
+        self.combo_tipo_pista.setCurrentIndex(2)
 
-	def actualizar_etiqueta_pista(self):
-		ancho_m = self.spn_pista_modulos_ancho.value() * 1.25
-		largo_m = self.spn_pista_modulos_largo.value() * 1.25
-		self.lbl_pista_medidas.setText(
-			f"Medida real: {ancho_m:.2f}m x {largo_m:.2f}m"
-		)
+    def actualizar_etiqueta_pista(self):
+        ancho_m = self.spn_pista_modulos_ancho.value() * 1.25
+        largo_m = self.spn_pista_modulos_largo.value() * 1.25
+        self.lbl_pista_medidas.setText(
+            f"Medida real: {ancho_m:.2f}m x {largo_m:.2f}m"
+        )
 
-	def alternar_opcion_tiffany(self, texto):
-		es_tiffany = "Tiffany" in texto
-		self.chk_tiffany_12.setVisible(es_tiffany)
-		if not es_tiffany:
-			self.chk_tiffany_12.setChecked(False)
+    def alternar_opcion_tiffany(self, texto):
+        es_tiffany = "Tiffany" in texto
+        self.chk_tiffany_12.setVisible(es_tiffany)
+        if not es_tiffany:
+            self.chk_tiffany_12.setChecked(False)
 
-	def alternar_modo_carpa(self):
-		es_medida_libre = self.chk_carpa_libre.isChecked()
-		self.spn_largo_libre.setEnabled(es_medida_libre)
-		self.lbl_minimo_m2.setEnabled(not es_medida_libre)
-		for lbl_area in self.lbls_area:
-			lbl_area.setEnabled(not es_medida_libre)
-		self.actualizar_sugerencias()
+    def alternar_modo_carpa(self):
+        es_medida_libre = self.chk_carpa_libre.isChecked()
+        self.spn_largo_libre.setEnabled(es_medida_libre)
+        self.lbl_minimo_m2.setEnabled(not es_medida_libre)
+        for lbl_area in self.lbls_area:
+            lbl_area.setEnabled(not es_medida_libre)
+        self.actualizar_sugerencias()
 
-	def actualizar_sugerencias(self):
-		invitados = self.spin_invitados.value()
-		factor_espacio = self.spin_factor.value()
-		m2_minimos = invitados + factor_espacio
-		self.lbl_minimo_m2.setText(f"Mínimo: {m2_minimos} m2")
 
-		for ancho, radio, spin_largo, lbl_area in zip(
-			self.anchos_carpa,
-			self.radios_ancho,
-			self.spins_largo,
-			self.lbls_area,
-		):
-			largo_sugerido = math.ceil((m2_minimos / ancho) / 5.0) * 5
-			spin_largo.blockSignals(True)
-			spin_largo.setValue(largo_sugerido)
-			spin_largo.blockSignals(False)
-			lbl_area.setText(f"({ancho}x{largo_sugerido}) = {ancho * largo_sugerido} m2")
+    def actualizar_sugerencias(self):
+        invitados = self.spin_invitados.value()
+        factor_espacio = self.spin_factor.value()
+        m2_minimos = invitados + factor_espacio
+        self.lbl_minimo_m2.setText(f"Mínimo: {m2_minimos} m2")
 
-		_, dimensiones_pista = calculos.calcular_pista(invitados)
-		self.combo_tipo_pista.blockSignals(True)
-		self.combo_tipo_pista.clear()
-		self.combo_tipo_pista.addItem(f"Pista de Madera ({dimensiones_pista})", 90.0)
-		self.combo_tipo_pista.addItem(
-			f"Pista Iluminada ({dimensiones_pista})", 290.0
-		)
-		self.combo_tipo_pista.addItem(f"Pista Mixta ({dimensiones_pista})", 0.0)
-		self.combo_tipo_pista.blockSignals(False)
-		mesas = math.ceil(invitados / 10)
-		self.lbl_pista.setText(f"Pista Sugerida: {dimensiones_pista}")
-		self.lbl_mesas.setText(f"Mesas Base: {mesas}")
-		for ancho, radio, spin_largo, _ in zip(
-			self.anchos_carpa,
-			self.radios_ancho,
-			self.spins_largo,
-			self.lbls_area,
-		):
-			if radio.isChecked():
-				largo = (
-					self.spn_largo_libre.value()
-					if self.chk_carpa_libre.isChecked()
-					else spin_largo.value()
-				)
-				self.lbl_carpa.setText(f"Carpa Sugerida: {ancho}m x {largo}m")
-				break
+        for ancho, radio, spin_largo, lbl_area in zip(
+            self.anchos_carpa,
+            self.radios_ancho,
+            self.spins_largo,
+            self.lbls_area,
+        ):
+            largo_sugerido = math.ceil((m2_minimos / ancho) / 5.0) * 5
+            spin_largo.blockSignals(True)
+            spin_largo.setValue(largo_sugerido)
+            spin_largo.blockSignals(False)
+            lbl_area.setText(f"({ancho}x{largo_sugerido}) = {ancho * largo_sugerido} m2")
 
-	def recalcular_area_manual(self, _valor):
-		spin_largo = self.sender()
-		for ancho, spin, lbl_area in zip(
-			self.anchos_carpa, self.spins_largo, self.lbls_area
-		):
-			if spin is spin_largo:
-				lbl_area.setText(
-					f"({ancho}x{spin.value()}) = {ancho * spin.value()} m2"
-				)
-				if self.radios_ancho[self.spins_largo.index(spin)].isChecked():
-					self.lbl_carpa.setText(
-						f"Carpa Sugerida: {ancho}m x {spin.value()}m"
-					)
-				break
+        _, dimensiones_pista = calculos.calcular_pista(invitados)
+        self.combo_tipo_pista.blockSignals(True)
+        self.combo_tipo_pista.clear()
+        self.combo_tipo_pista.addItem(f"Pista de Madera ({dimensiones_pista})", 90.0)
+        self.combo_tipo_pista.addItem(
+            f"Pista Iluminada ({dimensiones_pista})", 290.0
+        )
+        self.combo_tipo_pista.addItem(f"Pista Mixta ({dimensiones_pista})", 0.0)
+        self.combo_tipo_pista.blockSignals(False)
+        mesas = math.ceil(invitados / 10)
+        self.lbl_pista.setText(f"Pista Sugerida: {dimensiones_pista}")
+        self.lbl_mesas.setText(f"Mesas Base: {mesas}")
+        for ancho, radio, spin_largo, _ in zip(
+            self.anchos_carpa,
+            self.radios_ancho,
+            self.spins_largo,
+            self.lbls_area,
+        ):
+            if radio.isChecked():
+                largo = (
+                    self.spn_largo_libre.value()
+                    if self.chk_carpa_libre.isChecked()
+                    else spin_largo.value()
+                )
+                self.lbl_carpa.setText(f"Carpa Sugerida: {ancho}m x {largo}m")
+                break
 
-	def aplicar_al_carrito(self):
-		seleccion = next(
-			(
-				(ancho, spin_largo)
-				for ancho, radio, spin_largo in zip(
-					self.anchos_carpa, self.radios_ancho, self.spins_largo
-				)
-				if radio.isChecked()
-			),
-			None,
-		)
-		if seleccion is None:
-			return
+    def recalcular_area_manual(self, _valor):
+        spin_largo = self.sender()
+        for ancho, spin, lbl_area in zip(
+            self.anchos_carpa, self.spins_largo, self.lbls_area
+        ):
+            if spin is spin_largo:
+                lbl_area.setText(
+                    f"({ancho}x{spin.value()}) = {ancho * spin.value()} m2"
+                )
+                if self.radios_ancho[self.spins_largo.index(spin)].isChecked():
+                    self.lbl_carpa.setText(
+                        f"Carpa Sugerida: {ancho}m x {spin.value()}m"
+                    )
+                break
 
-		self.guardar_estado()
-		for fila in range(self.tabla.rowCount() - 1, -1, -1):
-			item_categoria = self.tabla.item(fila, 0)
-			if item_categoria and item_categoria.data(Qt.UserRole) is True:
-				self.tabla.removeRow(fila)
+    def aplicar_al_carrito(self):
+        seleccion = next(
+            (
+                (ancho, spin_largo)
+                for ancho, radio, spin_largo in zip(
+                    self.anchos_carpa, self.radios_ancho, self.spins_largo
+                )
+                if radio.isChecked()
+            ),
+            None,
+        )
+        if seleccion is None:
+            return
 
-		ancho, spin_largo = seleccion
-		largo = (
-			self.spn_largo_libre.value()
-			if self.chk_carpa_libre.isChecked()
-			else spin_largo.value()
-		)
-		area_carpa = ancho * largo
-		estilo = self.combo_estilo.currentText()
-		if self.chk_carpa.isChecked():
-			precio_base = self.spn_precio_base_carpa.value()
-			precio_deco = (
-				self.spn_precio_decoracion.value()
-				if estilo in ["Decorada", "Plisada"]
-				else 0.0
-			)
-			precio_final_m2 = precio_base + precio_deco
-			desc = (
-				f"Carpa elegante de {ancho}x{largo}m.<br/>"
-				"- Incluye cortina perimetral con simulación de ventana, falso "
-				"plafón de tela, cubre postes blancos e iluminación."
-			)
-			if precio_deco:
-				desc += (
-					"<br/>- Decoración perimetral con telas en tergal francés, "
-					"decoración aérea con telas con candelabro."
-				)
-			self.agregar_fila_tabla(
-				"CARPAS",
-				f"Carpa {estilo} {ancho}x{largo}m",
-				area_carpa,
-				precio_final_m2,
-				es_sugerencia=True,
-				descripcion=desc,
-			)
+        self.guardar_estado()
+        for fila in range(self.tabla.rowCount() - 1, -1, -1):
+            item_categoria = self.tabla.item(fila, 0)
+            if item_categoria and item_categoria.data(Qt.UserRole) is True:
+                self.tabla.removeRow(fila)
 
-		invitados = self.spin_invitados.value()
-		if self.chk_mesas.isChecked():
-			precio_paquete_10 = self.combo_paquete_mesas.currentData()
-			nombre_mesa = self.combo_paquete_mesas.currentText()
-			if "Tiffany" in nombre_mesa and self.chk_tiffany_12.isChecked():
-				cantidad_mesas = math.ceil(invitados / 12)
-				precio_mesa = precio_paquete_10 * 1.2
-				nombre_mesa = "Mesa c/12 Tiffany"
-				sillas_por_mesa = 12
-			else:
-				cantidad_mesas = math.ceil(invitados / 10)
-				precio_mesa = precio_paquete_10
-				sillas_por_mesa = 10
-			if "Tiffany" in nombre_mesa:
-				desc = (
-					f"Mesa imperial con {sillas_por_mesa} sillas Tiffany de lujo "
-					"y mantelería en color a elegir."
-				)
-			elif "Vestidas" in nombre_mesa:
-				desc = "Mesas en montaje francés con mantelería en colores a elegir."
-			else:
-				desc = "Tablón rectangular con mantel blanco y 10 sillas plásticas plegables."
-			self.agregar_fila_tabla(
-				"MESAS",
-				nombre_mesa,
-				cantidad_mesas,
-				precio_mesa,
-				es_sugerencia=True,
-				descripcion=desc,
-			)
+        # ---------------- 1. CARPAS ----------------
+        ancho, spin_largo = seleccion
+        largo = (
+            self.spn_largo_libre.value()
+            if self.chk_carpa_libre.isChecked()
+            else spin_largo.value()
+        )
+        area_carpa = ancho * largo
+        estilo = self.combo_estilo.currentText()
+        
+        if self.chk_carpa.isChecked():
+            precio_base = self.spn_precio_base_carpa.value()
+            precio_deco = (
+                self.spn_precio_decoracion.value()
+                if estilo in ["Decorada", "Plisada"]
+                else 0.0
+            )
+            precio_final_m2 = precio_base + precio_deco
+            
+            # Nombres para BD y PDF
+            nombre_db = f"Carpa {estilo}"
+            nombre_pdf = f"Carpa {estilo} {ancho}x{largo}m"
+            
+            # Traer descripción pura de SQLite y reemplazar comodines
+            desc = self.gestor_bd.obtener_descripcion(nombre_db) or ""
+            if desc:
+                desc = desc.replace("{ancho}", str(ancho)).replace("{largo}", str(largo))
+            
+            # Anexar decoración fija solo si aplica
+            if precio_deco:
+                desc += "<br/>- Decoración perimetral con telas en tergal francés, decoración aérea con telas con candelabro."
+                
+            self.agregar_fila_tabla(
+                "CARPAS",
+                nombre_pdf,
+                area_carpa,
+                precio_final_m2,
+                es_sugerencia=True,
+                descripcion=desc,
+            )
 
-		if self.chk_pista.isChecked():
-			es_pista_mixta = "Mixta" in self.combo_tipo_pista.currentText()
-			hay_diseno_mixto = (
-				es_pista_mixta
-				and self.memoria_mixta_madera is not None
-				and self.memoria_mixta_ilum is not None
-			)
-			if hay_diseno_mixto:
-				precio_m2_madera = 90.0
-				precio_m2_iluminada = 290.0
-				costo_pista_mixta = (
-					self.memoria_mixta_madera * 1.5625 * precio_m2_madera
-					+ self.memoria_mixta_ilum * 1.5625 * precio_m2_iluminada
-				)
-				self.agregar_fila_tabla(
-					"PISTAS",
-					f"Pista Mixta ({self.memoria_mixta_madera} mód. madera, "
-					f"{self.memoria_mixta_ilum} mód. iluminados)",
-					1,
-					costo_pista_mixta,
-					es_sugerencia=True,
-					descripcion=(
-						"Pista de baile mixta con módulos de madera e iluminación LED "
-						"personalizable. "
-						f"{self.memoria_mixta_madera} módulos de madera y "
-						f"{self.memoria_mixta_ilum} módulos iluminados."
-					),
-				)
-			elif self.chk_pista_libre.isChecked():
-				ancho_m = self.spn_pista_modulos_ancho.value() * 1.25
-				largo_m = self.spn_pista_modulos_largo.value() * 1.25
-				area_pista = ancho_m * largo_m
-				tipo_pista = (
-					f"Pista de Baile ({ancho_m:.2f}x{largo_m:.2f}m)"
-				)
-				precio_pista = self.combo_tipo_pista.currentData()
-				desc = (
-					f"Pista de baile con módulos de "
-					f"{'iluminación LED personalizable' if 'Iluminada' in self.combo_tipo_pista.currentText() else 'madera'} "
-					f"y medidas de {ancho_m:.2f}x{largo_m:.2f}m."
-				)
-			else:
-				area_pista, dimensiones_pista = calculos.calcular_pista(invitados)
-				tipo_pista = self.combo_tipo_pista.currentText()
-				ancho_m, largo_m = dimensiones_pista.removesuffix("m").split("m x ")
-				precio_pista = self.combo_tipo_pista.currentData()
-				if "Iluminada" in tipo_pista:
-					desc = (
-						"Pista de baile con módulos de iluminación LED personalizable "
-						f"y medidas de {ancho_m}x{largo_m}m."
-					)
-				else:
-					desc = (
-						"Pista de baile con módulos de madera y medidas de "
-						f"{ancho_m}x{largo_m}m."
-					)
-			if not hay_diseno_mixto:
-				self.agregar_fila_tabla(
-					"PISTAS",
-					tipo_pista,
-					area_pista,
-					precio_pista,
-					es_sugerencia=True,
-					descripcion=desc,
-				)
-		self.aplicar_button.setText("Sugerencias Aplicadas")
-		self.aplicar_button.setEnabled(False)
-		self.calcular_total()
+        # ---------------- 2. MESAS ----------------
+        invitados = self.spin_invitados.value()
+        if self.chk_mesas.isChecked():
+            precio_paquete_10 = self.combo_paquete_mesas.currentData()
+            nombre_mesa = self.combo_paquete_mesas.currentText()
+            
+            if "Tiffany" in nombre_mesa and self.chk_tiffany_12.isChecked():
+                cantidad_mesas = math.ceil(invitados / 12)
+                precio_mesa = precio_paquete_10 * 1.2
+                nombre_mesa = "Mesa c/12 Tiffany"
+                sillas_por_mesa = 12
+            else:
+                cantidad_mesas = math.ceil(invitados / 10)
+                precio_mesa = precio_paquete_10
+                sillas_por_mesa = 10
+                
+            # Traer descripción pura de SQLite y reemplazar comodín
+            desc = self.gestor_bd.obtener_descripcion(nombre_mesa) or ""
+            if desc:
+                desc = desc.replace("{sillas}", str(sillas_por_mesa))
+                
+            self.agregar_fila_tabla(
+                "MESAS",
+                nombre_mesa,
+                cantidad_mesas,
+                precio_mesa,
+                es_sugerencia=True,
+                descripcion=desc,
+            )
 
-	def agregar_fila_tabla(
-		self,
-		categoria,
-		articulo,
-		cantidad,
-		precio_unitario,
-		es_sugerencia=False,
-		descripcion="",
-	):
-		self.tabla.blockSignals(True)
-		try:
-			fila = self.tabla.rowCount()
-			self.tabla.insertRow(fila)
-			subtotal = float(cantidad) * float(precio_unitario)
-			valores = (
-				str(categoria),
-				str(articulo),
-				formatear_cantidad(cantidad),
-				formatear_moneda(precio_unitario),
-				formatear_moneda(subtotal),
-			)
-			for columna, valor in enumerate(valores):
-				item = QTableWidgetItem(valor)
-				if columna == 0 and es_sugerencia:
-					item.setData(Qt.UserRole, True)
-				if columna == 1:
-					item.setData(Qt.UserRole + 1, descripcion or str(articulo))
-				if columna not in (2, 3):
-					item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-				self.tabla.setItem(fila, columna, item)
-		finally:
-			self.tabla.blockSignals(False)
+        # ---------------- 3. PISTAS ----------------
+        if self.chk_pista.isChecked():
+            es_pista_mixta = "Mixta" in self.combo_tipo_pista.currentText()
+            hay_diseno_mixto = (
+                es_pista_mixta
+                and self.memoria_mixta_madera is not None
+                and self.memoria_mixta_ilum is not None
+            )
+            
+            if hay_diseno_mixto:
+                precio_m2_madera = 90.0
+                precio_m2_iluminada = 290.0
+                nombre_pdf = (
+                    f"Pista Mixta ({self.memoria_mixta_madera} mód. madera, "
+                    f"{self.memoria_mixta_ilum} mód. iluminados)"
+                )
+                costo_pista_mixta = (
+                    self.memoria_mixta_madera * 1.5625 * precio_m2_madera
+                    + self.memoria_mixta_ilum * 1.5625 * precio_m2_iluminada
+                )
+                
+                # Traer descripción pura de SQLite
+                desc = self.gestor_bd.obtener_descripcion("Pista Mixta") or ""
+                if desc:
+                    desc = desc.replace("{mod_madera}", str(self.memoria_mixta_madera)).replace("{mod_ilum}", str(self.memoria_mixta_ilum))
+                    
+                self.agregar_fila_tabla(
+                    "PISTAS",
+                    nombre_pdf,
+                    1,
+                    costo_pista_mixta,
+                    es_sugerencia=True,
+                    descripcion=desc,
+                )
+                
+            else:
+                # Pistas normales (Libre o Calculada)
+                if self.chk_pista_libre.isChecked():
+                    ancho_m = self.spn_pista_modulos_ancho.value() * 1.25
+                    largo_m = self.spn_pista_modulos_largo.value() * 1.25
+                    area_pista = ancho_m * largo_m
+                    # Formateamos para quitar decimales largos en caso de que los haya
+                    ancho_str = f"{ancho_m:.2f}".rstrip('0').rstrip('.')
+                    largo_str = f"{largo_m:.2f}".rstrip('0').rstrip('.')
+                    tipo_pista_pdf = f"Pista de Baile ({ancho_str}x{largo_str}m)"
+                    precio_pista = self.combo_tipo_pista.currentData()
+                else:
+                    area_pista, dimensiones_pista = calculos.calcular_pista(invitados)
+                    tipo_pista_pdf = self.combo_tipo_pista.currentText()
+                    ancho_str, largo_str = dimensiones_pista.removesuffix("m").split("m x ")
+                    precio_pista = self.combo_tipo_pista.currentData()
 
-	def recalcular_fila(self, row, col):
-		if col not in (2, 3):
-			return
-		try:
-			cantidad = float(self.tabla.item(row, 2).text())
-			precio = limpiar_moneda(self.tabla.item(row, 3).text())
-		except (AttributeError, ValueError):
-			return
+                # Definir base de búsqueda en BD
+                nombre_db = "Pista Iluminada" if "Iluminada" in self.combo_tipo_pista.currentText() else "Pista de Madera"
+                
+                # Traer descripción pura de SQLite
+                desc = self.gestor_bd.obtener_descripcion(nombre_db) or ""
+                if desc:
+                    desc = desc.replace("{ancho}", ancho_str).replace("{largo}", largo_str)
 
-		self.tabla.blockSignals(True)
-		try:
-			nuevo_subtotal = cantidad * precio
-			self.tabla.setItem(
-				row, 4, QTableWidgetItem(formatear_moneda(nuevo_subtotal))
-			)
-		finally:
-			self.tabla.blockSignals(False)
-		self.calcular_total()
+                self.agregar_fila_tabla(
+                    "PISTAS",
+                    tipo_pista_pdf,
+                    area_pista,
+                    precio_pista,
+                    es_sugerencia=True,
+                    descripcion=desc,
+                )
 
-	def limpiar_cotizacion(self):
-		self.guardar_estado()
-		self.tabla.setRowCount(0)
-		self.calcular_total()
+        self.aplicar_button.setText("Sugerencias Aplicadas")
+        self.aplicar_button.setEnabled(False)
+        self.calcular_total()
 
-	def eliminar_fila(self):
-		fila = self.tabla.currentRow()
-		if fila >= 0:
-			self.guardar_estado()
-			item_categoria = self.tabla.item(fila, 0)
-			if item_categoria and item_categoria.data(Qt.UserRole) is True:
-				self.activar_boton_sugerencias()
-			self.tabla.removeRow(fila)
-			self.calcular_total()
+    def agregar_fila_tabla(
+        self,
+        categoria,
+        articulo,
+        cantidad,
+        precio_unitario,
+        es_sugerencia=False,
+        descripcion="",
+    ):
+        self.tabla.blockSignals(True)
+        try:
+            fila = self.tabla.rowCount()
+            self.tabla.insertRow(fila)
+            subtotal = float(cantidad) * float(precio_unitario)
+            valores = (
+                str(categoria),
+                str(articulo),
+                formatear_cantidad(cantidad),
+                formatear_moneda(precio_unitario),
+                formatear_moneda(subtotal),
+            )
+            for columna, valor in enumerate(valores):
+                item = QTableWidgetItem(valor)
+                if columna == 0 and es_sugerencia:
+                    item.setData(Qt.UserRole, True)
+                if columna == 1:
+                    item.setData(Qt.UserRole + 1, descripcion or str(articulo))
+                if columna not in (2, 3):
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                self.tabla.setItem(fila, columna, item)
+        finally:
+            self.tabla.blockSignals(False)
 
-	def abrir_buscador(self):
-		with self.gestor_bd._conectar() as conexion:
-			catalogo = conexion.execute(
-				"""
-				SELECT categoria, articulo, precio_publico AS precio
-				FROM Catalogo_Productos
-				"""
-			).fetchall()
+    def recalcular_fila(self, row, col):
+        if col not in (2, 3):
+            return
+        try:
+            cantidad = float(self.tabla.item(row, 2).text())
+            precio = limpiar_moneda(self.tabla.item(row, 3).text())
+        except (AttributeError, ValueError):
+            return
 
-		dialogo = DialogoBuscador(catalogo, self)
-		if dialogo.exec() != QDialog.Accepted:
-			return
+        self.tabla.blockSignals(True)
+        try:
+            nuevo_subtotal = cantidad * precio
+            self.tabla.setItem(
+                row, 4, QTableWidgetItem(formatear_moneda(nuevo_subtotal))
+            )
+        finally:
+            self.tabla.blockSignals(False)
+        self.calcular_total()
 
-		categoria, articulo, precio = dialogo.producto_seleccionado
-		cantidad, aceptado = QInputDialog.getDouble(
-			self, "Cantidad", "Ingrese la cantidad:", 1.0, 0.0, 100000.0, 2
-		)
-		if aceptado:
-			self.guardar_estado()
-			self.agregar_fila_tabla(categoria, articulo, cantidad, precio)
-			self.calcular_total()
+    def limpiar_cotizacion(self):
+        self.guardar_estado()
+        self.tabla.setRowCount(0)
+        self.calcular_total()
 
-	def generar_nombre_pdf(self, datos_cliente: dict, partidas: list) -> str:
-		def sanitizar(texto):
-			texto = (
-				unicodedata.normalize("NFKD", str(texto))
-				.encode("ASCII", "ignore")
-				.decode("utf-8")
-			)
-			return re.sub(r"[^A-Za-z0-9]", "_", texto)
+    def eliminar_fila(self):
+        fila = self.tabla.currentRow()
+        if fila >= 0:
+            self.guardar_estado()
+            item_categoria = self.tabla.item(fila, 0)
+            if item_categoria and item_categoria.data(Qt.UserRole) is True:
+                self.activar_boton_sugerencias()
+            self.tabla.removeRow(fila)
+            self.calcular_total()
 
-		articulo_principal = "Articulo"
-		mayor_subtotal = float("-inf")
-		for partida in partidas:
-			try:
-				subtotal = float(
-					str(partida[4]).replace("$", "").replace(",", "").strip()
-				)
-			except (IndexError, TypeError, ValueError):
-				continue
-			if subtotal > mayor_subtotal:
-				mayor_subtotal = subtotal
-				articulo_principal = sanitizar(partida[1]) or "Articulo"
+    def abrir_buscador(self):
+        with self.gestor_bd._conectar() as conexion:
+            catalogo = conexion.execute(
+                """
+                SELECT categoria, articulo, precio_publico AS precio
+                FROM Catalogo_Productos
+                """
+            ).fetchall()
 
-		nombre_cliente = datos_cliente.get("nombre", "")
-		nombre_cliente = (
-			sanitizar(str(nombre_cliente).split()[0])
-			if str(nombre_cliente).strip()
-			else ""
-		)
-		fecha = datetime.date.today().strftime("%Y-%m-%d")
-		nombre_base = f"COT_{fecha}_{articulo_principal}"
-		if nombre_cliente:
-			nombre_base += f"_{nombre_cliente}"
+        dialogo = DialogoBuscador(catalogo, self)
+        if dialogo.exec() != QDialog.Accepted:
+            return
 
-		carpeta = os.path.join(os.getcwd(), "Cotizaciones")
-		os.makedirs(carpeta, exist_ok=True)
-		ruta_final = os.path.join(carpeta, f"{nombre_base}.pdf")
-		contador = 1
-		while os.path.exists(ruta_final):
-			ruta_final = os.path.join(carpeta, f"{nombre_base}_{contador}.pdf")
-			contador += 1
-		return ruta_final
+        categoria, articulo, precio = dialogo.producto_seleccionado
+        cantidad, aceptado = QInputDialog.getDouble(
+            self, "Cantidad", "Ingrese la cantidad:", 1.0, 0.0, 100000.0, 2
+        )
+        if aceptado:
+            self.guardar_estado()
+            descripcion = self.gestor_bd.obtener_descripcion(articulo) or ""
+            self.agregar_fila_tabla(
+                categoria,
+                articulo,
+                cantidad,
+                precio,
+                descripcion=descripcion,
+            )
+            self.calcular_total()
 
-	def generar_pdf(self, tipo):
-		if self.tabla.rowCount() == 0:
-			QMessageBox.warning(
-				self,
-				"Carrito vacío",
-				"Agrega al menos una partida antes de generar el PDF.",
-			)
-			return
+    def generar_nombre_pdf(self, datos_cliente: dict, partidas: list) -> str:
+        def sanitizar(texto):
+            texto = (
+                unicodedata.normalize("NFKD", str(texto))
+                .encode("ASCII", "ignore")
+                .decode("utf-8")
+            )
+            return re.sub(r"[^A-Za-z0-9]", "_", texto)
 
-		dialogo = DialogoCliente(self)
-		if dialogo.exec() != QDialog.Accepted:
-			return
+        articulo_principal = "Articulo"
+        mayor_subtotal = float("-inf")
+        for partida in partidas:
+            try:
+                subtotal = float(
+                    str(partida[4]).replace("$", "").replace(",", "").strip()
+                )
+            except (IndexError, TypeError, ValueError):
+                continue
+            if subtotal > mayor_subtotal:
+                mayor_subtotal = subtotal
+                articulo_principal = sanitizar(partida[1]) or "Articulo"
 
-		datos_cliente = dialogo.obtener_datos()
-		partidas = []
-		for fila in range(self.tabla.rowCount()):
-			articulo = self.tabla.item(fila, 1)
-			partidas.append(
-				[
-					self.tabla.item(fila, 2).text(),
-					articulo.text(),
-					articulo.data(Qt.UserRole + 1) or articulo.text(),
-					self.tabla.item(fila, 3).text(),
-					self.tabla.item(fila, 4).text(),
-				]
-			)
+        nombre_cliente = datos_cliente.get("nombre", "")
+        nombre_cliente = (
+            sanitizar(str(nombre_cliente).split()[0])
+            if str(nombre_cliente).strip()
+            else ""
+        )
+        fecha = datetime.date.today().strftime("%Y-%m-%d")
+        nombre_base = f"COT_{fecha}_{articulo_principal}"
+        if nombre_cliente:
+            nombre_base += f"_{nombre_cliente}"
 
-		ruta_sugerida = self.generar_nombre_pdf(datos_cliente, partidas)
-		ruta_salida, _ = QFileDialog.getSaveFileName(
-			self,
-			"Guardar Cotización",
-			ruta_sugerida,
-			"Archivos PDF (*.pdf)",
-		)
-		if not ruta_salida:
-			return
-		if not ruta_salida.lower().endswith(".pdf"):
-			ruta_salida += ".pdf"
+        carpeta = os.path.join(os.getcwd(), "Cotizaciones")
+        os.makedirs(carpeta, exist_ok=True)
+        ruta_final = os.path.join(carpeta, f"{nombre_base}.pdf")
+        contador = 1
+        while os.path.exists(ruta_final):
+            ruta_final = os.path.join(carpeta, f"{nombre_base}_{contador}.pdf")
+            contador += 1
+        return ruta_final
 
-		generador_pdf.generar_cotizacion_pdf(
-			datos_cliente,
-			partidas,
-			self.lbl_total.text(),
-			ruta_salida,
-			tipo_formato=tipo,
-		)
-		QMessageBox.information(
-			self,
-			"PDF generado",
-			f"La cotización se guardó correctamente en:\n{ruta_salida}",
-		)
+    def generar_pdf(self, tipo):
+        if self.tabla.rowCount() == 0:
+            QMessageBox.warning(
+                self,
+                "Carrito vacío",
+                "Agrega al menos una partida antes de generar el PDF.",
+            )
+            return
 
-	def guardar_estado(self):
-		estado = []
-		for fila in range(self.tabla.rowCount()):
-			items = [self.tabla.item(fila, columna) for columna in range(5)]
-			estado.append(
-				{
-					"valores": [item.text() if item else "" for item in items],
-					"descripcion": (
-						items[1].data(Qt.UserRole + 1) if items[1] else ""
-					),
-					"es_sugerencia": bool(
-						items[0] and items[0].data(Qt.UserRole) is True
-					),
-				}
-			)
-		self.historial_estados.append(estado)
-		if len(self.historial_estados) > 20:
-			self.historial_estados.pop(0)
+        dialogo = DialogoCliente(self)
+        if dialogo.exec() != QDialog.Accepted:
+            return
 
-	def deshacer(self):
-		if not self.historial_estados:
-			return
-		estado = self.historial_estados.pop()
-		self.tabla.blockSignals(True)
-		try:
-			self.tabla.setRowCount(0)
-			for fila, registro in enumerate(estado):
-				self.tabla.insertRow(fila)
-				for columna, valor in enumerate(registro["valores"]):
-					item = QTableWidgetItem(valor)
-					if columna == 0 and registro["es_sugerencia"]:
-						item.setData(Qt.UserRole, True)
-					if columna == 1:
-						item.setData(Qt.UserRole + 1, registro.get("descripcion", ""))
-					if columna not in (2, 3):
-						item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-					self.tabla.setItem(fila, columna, item)
-		finally:
-			self.tabla.blockSignals(False)
-		self.calcular_total()
+        datos_cliente = dialogo.obtener_datos()
+        partidas = []
+        for fila in range(self.tabla.rowCount()):
+            articulo = self.tabla.item(fila, 1)
+            partidas.append(
+                [
+                    self.tabla.item(fila, 2).text(),
+                    articulo.text(),
+                    articulo.data(Qt.UserRole + 1) or articulo.text(),
+                    self.tabla.item(fila, 3).text(),
+                    self.tabla.item(fila, 4).text(),
+                ]
+            )
 
-	def activar_boton_sugerencias(self, *_args):
-		if not hasattr(self, "aplicar_button"):
-			return
-		self.aplicar_button.setText("Actualizar Sugerencias")
-		self.aplicar_button.setEnabled(True)
+        ruta_sugerida = self.generar_nombre_pdf(datos_cliente, partidas)
+        ruta_salida, _ = QFileDialog.getSaveFileName(
+            self,
+            "Guardar Cotización",
+            ruta_sugerida,
+            "Archivos PDF (*.pdf)",
+        )
+        if not ruta_salida:
+            return
+        if not ruta_salida.lower().endswith(".pdf"):
+            ruta_salida += ".pdf"
 
-	def calcular_total(self):
-		total = 0.0
-		for fila in range(self.tabla.rowCount()):
-			subtotal = self.tabla.item(fila, 4).text()
-			total += limpiar_moneda(subtotal)
-		self.lbl_total.setText(f"TOTAL: {formatear_moneda(total)}")
+        generador_pdf.generar_cotizacion_pdf(
+            datos_cliente,
+            partidas,
+            self.lbl_total.text(),
+            ruta_salida,
+            tipo_formato=tipo,
+        )
+        QMessageBox.information(
+            self,
+            "PDF generado",
+            f"La cotización se guardó correctamente en:\n{ruta_salida}",
+        )
+
+    def guardar_estado(self):
+        estado = []
+        for fila in range(self.tabla.rowCount()):
+            items = [self.tabla.item(fila, columna) for columna in range(5)]
+            estado.append(
+                {
+                    "valores": [item.text() if item else "" for item in items],
+                    "descripcion": (
+                        items[1].data(Qt.UserRole + 1) if items[1] else ""
+                    ),
+                    "es_sugerencia": bool(
+                        items[0] and items[0].data(Qt.UserRole) is True
+                    ),
+                }
+            )
+        self.historial_estados.append(estado)
+        if len(self.historial_estados) > 20:
+            self.historial_estados.pop(0)
+
+    def deshacer(self):
+        if not self.historial_estados:
+            return
+        estado = self.historial_estados.pop()
+        self.tabla.blockSignals(True)
+        try:
+            self.tabla.setRowCount(0)
+            for fila, registro in enumerate(estado):
+                self.tabla.insertRow(fila)
+                for columna, valor in enumerate(registro["valores"]):
+                    item = QTableWidgetItem(valor)
+                    if columna == 0 and registro["es_sugerencia"]:
+                        item.setData(Qt.UserRole, True)
+                    if columna == 1:
+                        item.setData(Qt.UserRole + 1, registro.get("descripcion", ""))
+                    if columna not in (2, 3):
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                    self.tabla.setItem(fila, columna, item)
+        finally:
+            self.tabla.blockSignals(False)
+        self.calcular_total()
+
+    def activar_boton_sugerencias(self, *_args):
+        if not hasattr(self, "aplicar_button"):
+            return
+        self.aplicar_button.setText("Actualizar Sugerencias")
+        self.aplicar_button.setEnabled(True)
+
+    def calcular_total(self):
+        total = 0.0
+        for fila in range(self.tabla.rowCount()):
+            subtotal = self.tabla.item(fila, 4).text()
+            total += limpiar_moneda(subtotal)
+        self.lbl_total.setText(f"TOTAL: {formatear_moneda(total)}")
 
 
 if __name__ == "__main__":
-	app = QApplication(sys.argv)
-	ventana = VentanaPrincipal()
-	ventana.show()
-	sys.exit(app.exec())
+    app = QApplication(sys.argv)
+    ventana = VentanaPrincipal()
+    ventana.show()
+    sys.exit(app.exec())
